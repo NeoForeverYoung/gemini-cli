@@ -78,6 +78,7 @@ import type { UserTierId } from '../code_assist/types.js';
 import { AgentRegistry } from '../agents/registry.js';
 import { setGlobalProxy } from '../utils/fetch.js';
 import { SubagentToolWrapper } from '../agents/subagent-tool-wrapper.js';
+import { FinishTool } from '../tools/finish.js';
 
 import { ApprovalMode } from '../policy/types.js';
 
@@ -283,6 +284,7 @@ export interface ConfigParameters {
   continueOnFailedApiCall?: boolean;
   retryFetchErrors?: boolean;
   enableShellOutputEfficiency?: boolean;
+  enableFinishTool?: boolean;
   fakeResponses?: string;
   recordResponses?: string;
   ptyInfo?: string;
@@ -389,6 +391,7 @@ export class Config {
   private readonly continueOnFailedApiCall: boolean;
   private readonly retryFetchErrors: boolean;
   private readonly enableShellOutputEfficiency: boolean;
+  private readonly enableFinishTool: boolean;
   readonly fakeResponses?: string;
   readonly recordResponses?: string;
   private readonly disableYoloMode: boolean;
@@ -513,6 +516,7 @@ export class Config {
     this.continueOnFailedApiCall = params.continueOnFailedApiCall ?? true;
     this.enableShellOutputEfficiency =
       params.enableShellOutputEfficiency ?? true;
+    this.enableFinishTool = true;
     this.extensionManagement = params.extensionManagement ?? true;
     this.enableExtensionReloading = params.enableExtensionReloading ?? false;
     this.storage = new Storage(this.targetDir);
@@ -1104,6 +1108,10 @@ export class Config {
     return this.enableShellOutputEfficiency;
   }
 
+  getEnableFinishTool(): boolean {
+    return this.enableFinishTool;
+  }
+
   getShellExecutionConfig(): ShellExecutionConfig {
     return this.shellExecutionConfig;
   }
@@ -1279,6 +1287,9 @@ export class Config {
     registerCoreTool(WebSearchTool, this);
     if (this.getUseWriteTodos()) {
       registerCoreTool(WriteTodosTool, this);
+    }
+    if (this.getEnableFinishTool()) {
+      registerCoreTool(FinishTool);
     }
 
     // Register Subagents as Tools
