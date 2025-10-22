@@ -336,6 +336,7 @@ export async function runNonInteractive({
           textOutput.ensureTrailingNewline();
           const toolResponseParts: Part[] = [];
           const completedToolCalls: CompletedToolCall[] = [];
+          let finish = false;
 
           for (const requestInfo of toolCallRequests) {
             const completedToolCall = await executeToolCall(
@@ -381,6 +382,11 @@ export async function runNonInteractive({
             if (toolResponse.responseParts) {
               toolResponseParts.push(...toolResponse.responseParts);
             }
+
+            if (toolResponse.isFinish) {
+              finish = true;
+              break;
+            }
           }
 
           // Record tool calls with full metadata before sending responses to Gemini
@@ -394,6 +400,10 @@ export async function runNonInteractive({
             debugLogger.error(
               `Error recording completed tool call information: ${error}`,
             );
+          }
+
+          if (finish) {
+            break;
           }
 
           currentMessages = [{ role: 'user', parts: toolResponseParts }];
