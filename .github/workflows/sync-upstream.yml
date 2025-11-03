@@ -12,6 +12,7 @@ on:
 # This grants the GITHUB_TOKEN write access to your repo's contents
 permissions:
   contents: 'write'
+  issues: 'write'
 # -----------------------------------------------------------------
 
 jobs:
@@ -27,9 +28,11 @@ jobs:
           fetch-depth: '0'
 
       - name: 'Configure Git'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}'
         run: |
-          git config user.name 'GitHub Action Bot'
-          git config user.email "action@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
       - name: 'Pull from public repo'
         run: |
           # Add the public repo as a remote named 'upstream'
@@ -37,14 +40,20 @@ jobs:
 
           # Fetch the main branch from the public repo
           git fetch upstream main
-          # Check out our local main branch
-          git checkout 'main'
-
-          # Merge the changes. --ff-only ensures you're only
-          # fast-forwarding.
-          git merge --ff-only upstream/main
+          # Merge the changes from the public repo
+          git merge upstream/main
 
       - name: 'Push changes to private mirror'
         run: |
           # This push will now be authenticated with write access
-          git push origin 'main'
+          git push origin '${{ github.ref_name }}'
+
+      - name: 'Create issue on failure'
+        if: 'failure()'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+          DETAILS_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+        run: |
+          gh issue create \
+            --title "Upstream Sync Failed" \
+            --body "The workflow to sync from the public repository failed, likely due to a merge conflict. Please resolve the conflict manually. See the failed run for details: ${DETAILS_URL}"
