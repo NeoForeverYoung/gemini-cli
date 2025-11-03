@@ -7,14 +7,6 @@ on:
   # Allow manual running from the "Actions" tab
   workflow_dispatch:
 
-# -----------------------------------------------------------------
-# 👇 ADD THIS BLOCK
-# This grants the GITHUB_TOKEN write access to your repo's contents
-permissions:
-  contents: 'write'
-  issues: 'write'
-# -----------------------------------------------------------------
-
 jobs:
   sync:
     runs-on: 'ubuntu-latest'
@@ -23,7 +15,7 @@ jobs:
         uses: 'actions/checkout@v4'
         with:
           # This token will now have the 'contents: write' permission
-          token: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}'
+          token: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT_ORIONS_BELT }}'
           # Fetch all history so we can merge
           fetch-depth: '0'
 
@@ -48,7 +40,7 @@ jobs:
       - name: 'Create issue on failure'
         if: 'failure()'
         env:
-          GITHUB_TOKEN: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}'
+          GITHUB_TOKEN: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT_ORIONS_BELT }}'
           DETAILS_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         run: |
           gh issue create \
