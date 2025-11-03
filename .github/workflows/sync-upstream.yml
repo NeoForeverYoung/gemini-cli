@@ -14,6 +14,7 @@ jobs:
       - name: 'Checkout private repo'
         uses: 'actions/checkout@v4'
         with:
+          ref: 'orions-belt-main'
           # This token will now have the 'contents: write' permission
           token: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT_ORIONS_BELT }}'
           # Fetch all history so we can merge
@@ -35,7 +36,7 @@ jobs:
 
       - name: 'Push changes to private mirror'
         run: |
-          git push
+          git push origin HEAD:orions-belt-main
 
       - name: 'Create issue on failure'
         if: 'failure()'
