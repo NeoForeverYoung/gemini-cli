@@ -1,10 +1,9 @@
-name: Sync from Public Repo
+name: 'Sync from Public Repo'
 
 on:
   # Run every 10 minutes
   schedule:
     - cron: '*/10 * * * *'
-  
   # Allow manual running from the "Actions" tab
   workflow_dispatch:
 
@@ -12,43 +11,40 @@ on:
 # 👇 ADD THIS BLOCK
 # This grants the GITHUB_TOKEN write access to your repo's contents
 permissions:
-  contents: write
+  contents: 'write'
 # -----------------------------------------------------------------
 
 jobs:
   sync:
-    runs-on: ubuntu-latest
-    
+    runs-on: 'ubuntu-latest'
     steps:
-      - name: Checkout private repo
-        uses: actions/checkout@v4
+      - name: 'Checkout private repo'
+        uses: 'actions/checkout@v4'
         with:
           # This token will now have the 'contents: write' permission
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: '${{ secrets.GITHUB_TOKEN }}'
           # Fetch all history so we can merge
-          fetch-depth: 0 
+          fetch-depth: '0'
 
-      - name: Configure Git
+      - name: 'Configure Git'
         run: |
-          git config user.name "GitHub Action Bot"
-          git config user.email "<>"
-
-      - name: Pull from public repo
+          git config user.name 'GitHub Action Bot'
+          git config user.email "action@github.com"
+      - name: 'Pull from public repo'
         run: |
           # Add the public repo as a remote named 'upstream'
-          git remote add upstream https://github.com/google-gemini/gemini-cli.git
-          
+          git remote add upstream 'https://github.com/google-gemini/gemini-cli.git'
+
           # Fetch the main branch from the public repo
           git fetch upstream main
-          
           # Check out our local main branch
-          git checkout main
-          
+          git checkout 'main'
+
           # Merge the changes. --ff-only ensures you're only
           # fast-forwarding.
           git merge --ff-only upstream/main
-      
-      - name: Push changes to private mirror
+
+      - name: 'Push changes to private mirror'
         run: |
           # This push will now be authenticated with write access
-          git push origin main
+          git push origin 'main'
