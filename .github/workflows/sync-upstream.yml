@@ -34,7 +34,7 @@ jobs:
       - name: 'Pull from public repo'
         run: |
           # Add the public repo as a remote named 'upstream'
-          git remote add upstream "github.com/google-gemini/gemini-cli.git"
+          git remote add upstream "https://github.com/google-gemini/gemini-cli.git"
 
           # Fetch the main branch from the public repo
           git fetch upstream main
