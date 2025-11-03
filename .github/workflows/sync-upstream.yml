@@ -31,7 +31,8 @@ jobs:
         run: |
           git config user.name "gemini-cli-robot"
           git config user.email "gemini-cli-robot@google.com"
-          git config --global url."https://github-actions:${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}@github.com/".insteadOf "https://github.com/"
+          echo "https://github-actions:${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}@github.com" > ~/.git-credentials
+          git config --global credential.helper store
       - name: 'Pull from public repo'
         run: |
           # Add the public repo as a remote named 'upstream'
