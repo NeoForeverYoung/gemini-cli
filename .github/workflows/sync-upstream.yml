@@ -43,8 +43,7 @@ jobs:
 
       - name: 'Push changes to private mirror'
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}@github.com/".insteadOf "https://github.com/"
-          git push origin '${{ github.ref_name }}'
+          git push https://github-actions:${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}@github.com/${{ github.repository }}.git '${{ github.ref_name }}'
 
       - name: 'Create issue on failure'
         if: 'failure()'
