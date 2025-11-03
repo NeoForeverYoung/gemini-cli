@@ -1,0 +1,47 @@
+name: Sync from Public Repo
+
+on:
+  # Run every 10 minutes
+  schedule:
+    - cron: '*/10 * * * *'
+  
+  # Allow manual running from the "Actions" tab
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+        with:
+          # This token has permission to push to this repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Fetch all history so we can merge
+          fetch-depth: 0 
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Action Bot"
+          git config user.email "<>"
+
+      - name: Pull from public repo
+        run: |
+          # Add the public repo as a remote named 'upstream'
+          git remote add upstream https://github.com/google-gemini/gemini-cli.git
+          
+          # Fetch the main branch from the public repo
+          git fetch upstream main
+          
+          # Check out our local main branch
+          git checkout main
+          
+          # Merge the changes. --ff-only ensures you're only
+          # fast-forwarding.
+          git merge --ff-only upstream/main
+      
+      - name: Push changes to private mirror
+        run: |
+          # Push the updated 'main' branch back to this (private) repo
+          git push origin main
