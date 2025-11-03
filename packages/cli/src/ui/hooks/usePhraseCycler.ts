@@ -286,11 +286,14 @@ export const PHRASE_CHANGE_INTERVAL_MS = 15000;
  * Custom hook to manage cycling through loading phrases.
  * @param isActive Whether the phrase cycling should be active.
  * @param isWaiting Whether to show a specific waiting phrase.
+ * @param isInteractiveShellWaiting Whether an interactive shell is waiting for input but not focused.
+ * @param customPhrases Optional list of custom phrases to use.
  * @returns The current loading phrase.
  */
 export const usePhraseCycler = (
   isActive: boolean,
   isWaiting: boolean,
+  isInteractiveShellWaiting: boolean,
   customPhrases?: string[],
 ) => {
   const loadingPhrases =
@@ -304,7 +307,15 @@ export const usePhraseCycler = (
   const phraseIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (isWaiting) {
+    if (isInteractiveShellWaiting) {
+      setCurrentLoadingPhrase(
+        'Interactive shell awaiting input... press Ctrl+f to focus shell',
+      );
+      if (phraseIntervalRef.current) {
+        clearInterval(phraseIntervalRef.current);
+        phraseIntervalRef.current = null;
+      }
+    } else if (isWaiting) {
       setCurrentLoadingPhrase('Waiting for user confirmation...');
       if (phraseIntervalRef.current) {
         clearInterval(phraseIntervalRef.current);
@@ -351,7 +362,13 @@ export const usePhraseCycler = (
         phraseIntervalRef.current = null;
       }
     };
-  }, [isActive, isWaiting, customPhrases, loadingPhrases]);
+  }, [
+    isActive,
+    isWaiting,
+    isInteractiveShellWaiting,
+    customPhrases,
+    loadingPhrases,
+  ]);
 
   return currentLoadingPhrase;
 };

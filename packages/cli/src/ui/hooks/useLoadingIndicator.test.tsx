@@ -27,18 +27,28 @@ describe('useLoadingIndicator', () => {
 
   const renderLoadingIndicatorHook = (
     initialStreamingState: StreamingState,
+    initialIsInteractiveShellWaiting: boolean = false,
   ) => {
     let hookResult: ReturnType<typeof useLoadingIndicator>;
     function TestComponent({
       streamingState,
+      isInteractiveShellWaiting,
     }: {
       streamingState: StreamingState;
+      isInteractiveShellWaiting?: boolean;
     }) {
-      hookResult = useLoadingIndicator(streamingState);
+      hookResult = useLoadingIndicator(
+        streamingState,
+        undefined,
+        isInteractiveShellWaiting,
+      );
       return null;
     }
     const { rerender } = render(
-      <TestComponent streamingState={initialStreamingState} />,
+      <TestComponent
+        streamingState={initialStreamingState}
+        isInteractiveShellWaiting={initialIsInteractiveShellWaiting}
+      />,
     );
     return {
       result: {
@@ -46,8 +56,10 @@ describe('useLoadingIndicator', () => {
           return hookResult;
         },
       },
-      rerender: (newProps: { streamingState: StreamingState }) =>
-        rerender(<TestComponent {...newProps} />),
+      rerender: (newProps: {
+        streamingState: StreamingState;
+        isInteractiveShellWaiting?: boolean;
+      }) => rerender(<TestComponent {...newProps} />),
     };
   };
 
@@ -57,6 +69,17 @@ describe('useLoadingIndicator', () => {
     expect(result.current.elapsedTime).toBe(0);
     expect(WITTY_LOADING_PHRASES).toContain(
       result.current.currentLoadingPhrase,
+    );
+  });
+
+  it('should show interactive shell waiting phrase when isInteractiveShellWaiting is true', () => {
+    const { result } = renderLoadingIndicatorHook(
+      StreamingState.Responding,
+      true,
+    );
+
+    expect(result.current.currentLoadingPhrase).toBe(
+      'Interactive shell awaiting input... press Ctrl+f to focus shell',
     );
   });
 

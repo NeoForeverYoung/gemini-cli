@@ -1005,6 +1005,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
   const { elapsedTime, currentLoadingPhrase } = useLoadingIndicator(
     streamingState,
     settings.merged.ui?.customWittyPhrases,
+    !!activePtyId && !embeddedShellFocused,
   );
 
   const handleGlobalKeypress = useCallback(
