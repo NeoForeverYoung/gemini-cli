@@ -42,9 +42,8 @@ jobs:
           git merge upstream/main
 
       - name: 'Push changes to private mirror'
-        env:
-          GH_TOKEN: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}'
         run: |
+          git config --global url."https://x-access-token:${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT }}@github.com/".insteadOf "https://github.com/"
           git push origin '${{ github.ref_name }}'
 
       - name: 'Create issue on failure'
