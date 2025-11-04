@@ -26,7 +26,8 @@ export const AppHeader = ({ version }: AppHeaderProps) => {
       {!(settings.merged.ui?.hideBanner || config.getScreenReader()) && (
         <Header version={version} nightly={nightly} />
       )}
-      <Banner bannerText={bannerText} />
+      {!(settings.merged.ui?.hideBanner || config.getScreenReader()) && (
+      <Banner bannerText={bannerText} /> )}
       {!(settings.merged.ui?.hideTips || config.getScreenReader()) && (
         <Tips config={config} />
       )}
