@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useInactivityTimer } from './useInactivityTimer.js';
 
 export const WITTY_LOADING_PHRASES = [
   "I'm Feeling Lucky",
@@ -104,7 +105,6 @@ export const WITTY_LOADING_PHRASES = [
   'Searching for the correct USB orientation...',
   'Ensuring the magic smoke stays inside the wires...',
   'Rewriting in Rust for no particular reason...',
-  'Trying to exit Vim...',
   'Spinning up the hamster wheel...',
   "That's not a bug, it's an undocumented feature...",
   'Engage.',
@@ -305,22 +305,12 @@ export const usePhraseCycler = (
   const [currentLoadingPhrase, setCurrentLoadingPhrase] = useState(
     loadingPhrases[0],
   );
-  const [showShellFocusHint, setShowShellFocusHint] = useState(false);
+  const showShellFocusHint = useInactivityTimer(
+    isInteractiveShellWaiting,
+    lastOutputTime,
+    5000,
+  );
   const phraseIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isInteractiveShellWaiting) {
-      // Reset the timer whenever isInteractiveShellWaiting becomes true OR lastOutputTime changes.
-      setShowShellFocusHint(false);
-      timer = setTimeout(() => {
-        setShowShellFocusHint(true);
-      }, 5000);
-    } else {
-      setShowShellFocusHint(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isInteractiveShellWaiting, lastOutputTime]);
 
   useEffect(() => {
     if (isInteractiveShellWaiting && showShellFocusHint) {
