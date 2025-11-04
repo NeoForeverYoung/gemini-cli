@@ -304,10 +304,23 @@ export const usePhraseCycler = (
   const [currentLoadingPhrase, setCurrentLoadingPhrase] = useState(
     loadingPhrases[0],
   );
+  const [showShellFocusHint, setShowShellFocusHint] = useState(false);
   const phraseIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (isInteractiveShellWaiting) {
+      timer = setTimeout(() => {
+        setShowShellFocusHint(true);
+      }, 5000);
+    } else {
+      setShowShellFocusHint(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isInteractiveShellWaiting]);
+
+  useEffect(() => {
+    if (isInteractiveShellWaiting && showShellFocusHint) {
       setCurrentLoadingPhrase(
         'Interactive shell awaiting input... press Ctrl+f to focus shell',
       );
@@ -368,6 +381,7 @@ export const usePhraseCycler = (
     isInteractiveShellWaiting,
     customPhrases,
     loadingPhrases,
+    showShellFocusHint,
   ]);
 
   return currentLoadingPhrase;
