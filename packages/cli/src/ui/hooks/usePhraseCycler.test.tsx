@@ -18,13 +18,20 @@ import {
 const TestComponent = ({
   isActive,
   isWaiting,
+  isInteractiveShellWaiting = false,
   customPhrases,
 }: {
   isActive: boolean;
   isWaiting: boolean;
+  isInteractiveShellWaiting?: boolean;
   customPhrases?: string[];
 }) => {
-  const phrase = usePhraseCycler(isActive, isWaiting, customPhrases);
+  const phrase = usePhraseCycler(
+    isActive,
+    isWaiting,
+    isInteractiveShellWaiting,
+    customPhrases,
+  );
   return <Text>{phrase}</Text>;
 };
 
@@ -54,6 +61,49 @@ describe('usePhraseCycler', () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(lastFrame()).toBe('Waiting for user confirmation...');
+  });
+
+  it('should show interactive shell waiting message when isInteractiveShellWaiting is true', async () => {
+    const { lastFrame, rerender } = render(
+      <TestComponent isActive={true} isWaiting={false} />,
+    );
+    rerender(
+      <TestComponent
+        isActive={true}
+        isWaiting={false}
+        isInteractiveShellWaiting={true}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(lastFrame()).toBe(
+      'Interactive shell awaiting input... press Ctrl+f to focus shell',
+    );
+  });
+
+  it('should prioritize interactive shell waiting over normal waiting', async () => {
+    const { lastFrame, rerender } = render(
+      <TestComponent isActive={true} isWaiting={true} />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(lastFrame()).toBe('Waiting for user confirmation...');
+
+    rerender(
+      <TestComponent
+        isActive={true}
+        isWaiting={true}
+        isInteractiveShellWaiting={true}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(lastFrame()).toBe(
+      'Interactive shell awaiting input... press Ctrl+f to focus shell',
+    );
   });
 
   it('should not cycle phrases if isActive is false and not waiting', async () => {
