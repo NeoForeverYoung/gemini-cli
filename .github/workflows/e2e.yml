@@ -3,11 +3,11 @@ name: 'Testing: E2E'
 on:
   push:
     branches:
-      - 'main'
+      - 'orions-belt-main'
   # This will run for PRs from the base repository, providing secrets.
   pull_request:
     branches:
-      - 'main'
+      - 'orions-belt-main'
       - 'release/**'
   # This will run for PRs from forks when a label is added.
   pull_request_target:
