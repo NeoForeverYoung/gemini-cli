@@ -165,8 +165,9 @@ runs:
         npm publish \
           --dry-run="${{ inputs.dry-run }}" \
           --workspace="${{ inputs.core-package-name }}" \
-          --no-tag
-        npm dist-tag rm ${{ inputs.core-package-name }} false --silent
+          --no-tag \ 
+          --loglevel silly
+        npm dist-tag rm ${{ inputs.core-package-name }} false
 
     - name: '🔗 Install latest core package'
       working-directory: '${{ inputs.working-directory }}'
