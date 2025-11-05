@@ -11,11 +11,13 @@ import { GeminiEventType } from '../core/turn.js';
 import {
   logLoopDetected,
   logLoopDetectionDisabled,
+  logLlmLoopCheck,
 } from '../telemetry/loggers.js';
 import {
   LoopDetectedEvent,
   LoopDetectionDisabledEvent,
   LoopType,
+  LlmLoopCheckEvent,
 } from '../telemetry/types.js';
 import type { Config } from '../config/config.js';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/config.js';
@@ -57,6 +59,11 @@ const MIN_LLM_CHECK_INTERVAL = 5;
  * This is used when the confidence of a loop is low, to check less frequently.
  */
 const MAX_LLM_CHECK_INTERVAL = 15;
+
+/**
+ * The confidence threshold above which the LLM is considered to have detected a loop.
+ */
+const LLM_CONFIDENCE_THRESHOLD = 0.9;
 
 const LOOP_DETECTION_SYSTEM_PROMPT = `You are a sophisticated AI diagnostic agent specializing in identifying when a conversational AI is stuck in an unproductive state. Your task is to analyze the provided conversation history and determine if the assistant has ceased to make meaningful progress.
 
@@ -433,44 +440,124 @@ export class LoopDetectionService {
         'unproductive_state_confidence',
       ],
     };
-    let result;
-    try {
-      result = await this.config.getBaseLlmClient().generateJson({
-        contents,
-        schema,
-        model: DEFAULT_GEMINI_FLASH_MODEL,
-        systemInstruction: LOOP_DETECTION_SYSTEM_PROMPT,
-        abortSignal: signal,
-        promptId: this.promptId,
-      });
-    } catch (e) {
-      // Do nothing, treat it as a non-loop.
-      this.config.getDebugMode() ? debugLogger.warn(e) : debugLogger.debug(e);
-      return false;
-    }
 
-    if (typeof result['unproductive_state_confidence'] === 'number') {
-      if (result['unproductive_state_confidence'] > 0.9) {
-        if (
-          typeof result['unproductive_state_analysis'] === 'string' &&
-          result['unproductive_state_analysis']
-        ) {
-          debugLogger.warn(result['unproductive_state_analysis']);
+    const flashResult = await this.queryLoopDetectionModel(
+      DEFAULT_GEMINI_FLASH_MODEL,
+      contents,
+      schema,
+      signal,
+    );
+
+    if (
+      flashResult &&
+      typeof flashResult['unproductive_state_confidence'] === 'number'
+    ) {
+      if (
+        flashResult['unproductive_state_confidence'] > LLM_CONFIDENCE_THRESHOLD
+      ) {
+        const mainModel = this.config.getModel();
+        if (mainModel === DEFAULT_GEMINI_FLASH_MODEL) {
+          this.handleConfirmedLoop(flashResult);
+          return true;
         }
-        logLoopDetected(
-          this.config,
-          new LoopDetectedEvent(LoopType.LLM_DETECTED_LOOP, this.promptId),
+
+        // Double check with configured model
+        const mainModelResult = await this.queryLoopDetectionModel(
+          mainModel,
+          contents,
+          schema,
+          signal,
         );
-        return true;
+
+        logLlmLoopCheck(
+          this.config,
+          new LlmLoopCheckEvent(
+            this.promptId,
+            flashResult['unproductive_state_confidence'] as number,
+            this.config.getModel(),
+            typeof mainModelResult?.['unproductive_state_confidence'] ===
+            'number'
+              ? (mainModelResult['unproductive_state_confidence'] as number)
+              : 0,
+          ),
+        );
+
+        if (
+          mainModelResult &&
+          typeof mainModelResult['unproductive_state_confidence'] === 'number'
+        ) {
+          if (
+            mainModelResult['unproductive_state_confidence'] >
+            LLM_CONFIDENCE_THRESHOLD
+          ) {
+            this.handleConfirmedLoop(mainModelResult);
+            return true;
+          } else {
+            this.updateCheckInterval(
+              mainModelResult['unproductive_state_confidence'],
+            );
+          }
+        }
       } else {
-        this.llmCheckInterval = Math.round(
-          MIN_LLM_CHECK_INTERVAL +
-            (MAX_LLM_CHECK_INTERVAL - MIN_LLM_CHECK_INTERVAL) *
-              (1 - result['unproductive_state_confidence']),
+        logLlmLoopCheck(
+          this.config,
+          new LlmLoopCheckEvent(
+            this.promptId,
+            flashResult['unproductive_state_confidence'] as number,
+            this.config.getModel(),
+            -1,
+          ),
+        );
+        this.updateCheckInterval(
+          flashResult['unproductive_state_confidence'] as number,
         );
       }
     }
+
     return false;
+  }
+
+  private async queryLoopDetectionModel(
+    model: string,
+    contents: Content[],
+    schema: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<Record<string, unknown> | null> {
+    try {
+      return (await this.config.getBaseLlmClient().generateJson({
+        contents,
+        schema,
+        model,
+        systemInstruction: LOOP_DETECTION_SYSTEM_PROMPT,
+        abortSignal: signal,
+        promptId: this.promptId,
+        maxAttempts: 2,
+      })) as Record<string, unknown>;
+    } catch (e) {
+      this.config.getDebugMode() ? debugLogger.warn(e) : debugLogger.debug(e);
+      return null;
+    }
+  }
+
+  private handleConfirmedLoop(result: Record<string, unknown>): void {
+    if (
+      typeof result['unproductive_state_analysis'] === 'string' &&
+      result['unproductive_state_analysis']
+    ) {
+      debugLogger.warn(result['unproductive_state_analysis']);
+    }
+    logLoopDetected(
+      this.config,
+      new LoopDetectedEvent(LoopType.LLM_DETECTED_LOOP, this.promptId),
+    );
+  }
+
+  private updateCheckInterval(unproductive_state_confidence: number): void {
+    this.llmCheckInterval = Math.round(
+      MIN_LLM_CHECK_INTERVAL +
+        (MAX_LLM_CHECK_INTERVAL - MIN_LLM_CHECK_INTERVAL) *
+          (1 - unproductive_state_confidence),
+    );
   }
 
   /**

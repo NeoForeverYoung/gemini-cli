@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Content } from '@google/genai';
 import type { Config } from '../config/config.js';
+import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/config.js';
 import type { GeminiClient } from '../core/client.js';
 import type { BaseLlmClient } from '../core/baseLlmClient.js';
 import type {
@@ -16,12 +17,13 @@ import type {
 } from '../core/turn.js';
 import { GeminiEventType } from '../core/turn.js';
 import * as loggers from '../telemetry/loggers.js';
-import { LoopType } from '../telemetry/types.js';
+import { LoopType, LlmLoopCheckEvent } from '../telemetry/types.js';
 import { LoopDetectionService } from './loopDetectionService.js';
 
 vi.mock('../telemetry/loggers.js', () => ({
   logLoopDetected: vi.fn(),
   logLoopDetectionDisabled: vi.fn(),
+  logLlmLoopCheck: vi.fn(),
 }));
 
 const TOOL_CALL_LOOP_THRESHOLD = 5;
@@ -735,6 +737,7 @@ describe('LoopDetectionService LLM Checks', () => {
       getBaseLlmClient: () => mockBaseLlmClient,
       getDebugMode: () => false,
       getTelemetryEnabled: () => true,
+      getModel: vi.fn().mockReturnValue('test-model'),
     } as unknown as Config;
 
     service = new LoopDetectionService(mockConfig);
@@ -876,5 +879,80 @@ describe('LoopDetectionService LLM Checks', () => {
     });
     // Verify the original history follows
     expect(calledArg.contents[1]).toEqual(functionCallHistory[0]);
+  });
+
+  describe('Double Loop Check', () => {
+    it('should confirm loop when both flash and main model agree', async () => {
+      const mainModel = 'gemini-1.5-pro';
+      vi.mocked(mockConfig.getModel).mockReturnValue(mainModel);
+
+      // Mock generateJson to return different results based on model
+      mockBaseLlmClient.generateJson = vi
+        .fn()
+        .mockImplementation(async (args) => {
+          if (args.model === DEFAULT_GEMINI_FLASH_MODEL) {
+            return { unproductive_state_confidence: 0.95 };
+          } else if (args.model === mainModel) {
+            return { unproductive_state_confidence: 0.92 };
+          }
+          return { unproductive_state_confidence: 0 };
+        });
+
+      await advanceTurns(29);
+      const result = await service.turnStarted(abortController.signal);
+
+      expect(result).toBe(true);
+      expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(2);
+      expect(loggers.logLlmLoopCheck).toHaveBeenCalledWith(
+        mockConfig,
+        expect.any(LlmLoopCheckEvent),
+      );
+      expect(loggers.logLoopDetected).toHaveBeenCalled();
+    });
+
+    it('should deny loop when main model disagrees with flash', async () => {
+      const mainModel = 'gemini-1.5-pro';
+      vi.mocked(mockConfig.getModel).mockReturnValue(mainModel);
+
+      mockBaseLlmClient.generateJson = vi
+        .fn()
+        .mockImplementation(async (args) => {
+          if (args.model === DEFAULT_GEMINI_FLASH_MODEL) {
+            return { unproductive_state_confidence: 0.95 };
+          } else if (args.model === mainModel) {
+            return { unproductive_state_confidence: 0.5 };
+          }
+          return { unproductive_state_confidence: 0 };
+        });
+
+      await advanceTurns(29);
+      const result = await service.turnStarted(abortController.signal);
+
+      expect(result).toBe(false);
+      expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(2);
+      expect(loggers.logLlmLoopCheck).toHaveBeenCalledWith(
+        mockConfig,
+        expect.any(LlmLoopCheckEvent),
+      );
+      expect(loggers.logLoopDetected).not.toHaveBeenCalled();
+    });
+
+    it('should skip double check if main model is same as flash', async () => {
+      vi.mocked(mockConfig.getModel).mockReturnValue(
+        DEFAULT_GEMINI_FLASH_MODEL,
+      );
+
+      mockBaseLlmClient.generateJson = vi.fn().mockResolvedValue({
+        unproductive_state_confidence: 0.95,
+      });
+
+      await advanceTurns(29);
+      const result = await service.turnStarted(abortController.signal);
+
+      expect(result).toBe(true);
+      expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
+      expect(loggers.logLlmLoopCheck).not.toHaveBeenCalled();
+      expect(loggers.logLoopDetected).toHaveBeenCalled();
+    });
   });
 });
