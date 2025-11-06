@@ -27,7 +27,7 @@ import {
   type FunctionCall,
   type Part,
   type GenerateContentResponse,
-  type GenerateContentConfig,
+  type PartListUnion,
   type Content,
 } from '@google/genai';
 import type { Config } from '../config/config.js';
@@ -55,14 +55,19 @@ import { AgentTerminateMode } from './types.js';
 import type { AnyDeclarativeTool, AnyToolInvocation } from '../tools/tools.js';
 import { CompressionStatus } from '../core/turn.js';
 import { ChatCompressionService } from '../services/chatCompressionService.js';
+import type { ResolvedModelConfig } from '../services/modelGenerationConfigService.js';
 
-const { mockSendMessageStream, mockExecuteToolCall, mockCompress } = vi.hoisted(
-  () => ({
-    mockSendMessageStream: vi.fn(),
-    mockExecuteToolCall: vi.fn(),
-    mockCompress: vi.fn(),
-  }),
-);
+const {
+  mockSendMessageStream,
+  mockExecuteToolCall,
+  mockSetSystemInstruction,
+  mockCompress,
+} = vi.hoisted(() => ({
+  mockSendMessageStream: vi.fn(),
+  mockExecuteToolCall: vi.fn(),
+  mockSetSystemInstruction: vi.fn(),
+  mockCompress: vi.fn(),
+}));
 
 let mockChatHistory: Content[] = [];
 const mockSetHistory = vi.fn((newHistory: Content[]) => {
@@ -172,8 +177,10 @@ const mockModelResponse = (
 const getMockMessageParams = (callIndex: number) => {
   const call = mockSendMessageStream.mock.calls[callIndex];
   expect(call).toBeDefined();
-  // Arg 1 of sendMessageStream is the message parameters
-  return call[1] as { message?: Part[]; config?: GenerateContentConfig };
+  return {
+    resolvedConfig: call[0],
+    message: call[1],
+  } as { resolvedConfig: ResolvedModelConfig; message: PartListUnion };
 };
 
 let mockConfig: Config;
@@ -241,6 +248,8 @@ describe('AgentExecutor', () => {
       () =>
         ({
           sendMessageStream: mockSendMessageStream,
+          setSystemInstruction: mockSetSystemInstruction,
+          setTools: vi.fn(),
           getHistory: vi.fn((_curated?: boolean) => [...mockChatHistory]),
           getLastPromptTokenCount: vi.fn(() => 100),
           setHistory: mockSetHistory,
@@ -417,16 +426,13 @@ describe('AgentExecutor', () => {
       const output = await executor.run(inputs, signal);
 
       expect(mockSendMessageStream).toHaveBeenCalledTimes(2);
-
-      const chatConstructorArgs = MockedGeminiChat.mock.calls[0];
-      const chatConfig = chatConstructorArgs[1];
-      expect(chatConfig?.systemInstruction).toContain(
+      expect(mockSetSystemInstruction.mock.calls[0][0]).toContain(
         `MUST call the \`${TASK_COMPLETE_TOOL_NAME}\` tool`,
       );
 
       const turn1Params = getMockMessageParams(0);
 
-      const firstToolGroup = turn1Params.config?.tools?.[0];
+      const firstToolGroup = turn1Params.resolvedConfig.sdkConfig.tools?.[0];
       expect(firstToolGroup).toBeDefined();
 
       if (!firstToolGroup || !('functionDeclarations' in firstToolGroup)) {
@@ -557,7 +563,7 @@ describe('AgentExecutor', () => {
       const output = await executor.run({ goal: 'Do work' }, signal);
 
       const turn1Params = getMockMessageParams(0);
-      const firstToolGroup = turn1Params.config?.tools?.[0];
+      const firstToolGroup = turn1Params.resolvedConfig.sdkConfig.tools?.[0];
 
       expect(firstToolGroup).toBeDefined();
       if (!firstToolGroup || !('functionDeclarations' in firstToolGroup)) {
@@ -706,7 +712,7 @@ describe('AgentExecutor', () => {
       expect(turn2Parts).toBeDefined();
       expect(turn2Parts).toHaveLength(1);
 
-      expect(turn2Parts![0]).toEqual(
+      expect((turn2Parts as Part[])![0]).toEqual(
         expect.objectContaining({
           functionResponse: expect.objectContaining({
             name: TASK_COMPLETE_TOOL_NAME,
@@ -896,7 +902,7 @@ describe('AgentExecutor', () => {
       const turn2Params = getMockMessageParams(1);
       const parts = turn2Params.message;
       expect(parts).toBeDefined();
-      expect(parts![0]).toEqual(
+      expect((parts as Part[])![0]).toEqual(
         expect.objectContaining({
           functionResponse: expect.objectContaining({
             id: badCallId,
@@ -977,8 +983,8 @@ describe('AgentExecutor', () => {
       );
 
       // Mock a model call that is interruptible by an abort signal.
-      mockSendMessageStream.mockImplementationOnce(async (_model, params) => {
-        const signal = params?.config?.abortSignal;
+      mockSendMessageStream.mockImplementationOnce(async (resolvedConfig) => {
+        const signal = resolvedConfig.sdkConfig.abortSignal;
         // eslint-disable-next-line require-yield
         return (async function* () {
           await new Promise<void>((resolve) => {
@@ -1289,8 +1295,8 @@ describe('AgentExecutor', () => {
       );
 
       // Mock a model call that gets interrupted by the timeout.
-      mockSendMessageStream.mockImplementationOnce(async (_model, params) => {
-        const signal = params?.config?.abortSignal;
+      mockSendMessageStream.mockImplementationOnce(async (resolvedConfig) => {
+        const signal = resolvedConfig.sdkConfig?.abortSignal;
         // eslint-disable-next-line require-yield
         return (async function* () {
           // This promise never resolves, it waits for abort.
@@ -1343,8 +1349,8 @@ describe('AgentExecutor', () => {
         onActivity,
       );
 
-      mockSendMessageStream.mockImplementationOnce(async (_model, params) => {
-        const signal = params?.config?.abortSignal;
+      mockSendMessageStream.mockImplementationOnce(async (resolvedConfig) => {
+        const signal = resolvedConfig.sdkConfig.abortSignal;
         // eslint-disable-next-line require-yield
         return (async function* () {
           await new Promise<void>((resolve) =>
@@ -1354,8 +1360,8 @@ describe('AgentExecutor', () => {
       });
 
       // Mock the recovery call to also be long-running
-      mockSendMessageStream.mockImplementationOnce(async (_model, params) => {
-        const signal = params?.config?.abortSignal;
+      mockSendMessageStream.mockImplementationOnce(async (resolvedConfig) => {
+        const signal = resolvedConfig.sdkConfig.abortSignal;
         // eslint-disable-next-line require-yield
         return (async function* () {
           await new Promise<void>((resolve) =>
