@@ -785,12 +785,6 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
         return;
       }
 
-      // Ctrl+V for clipboard image paste
-      if (keyMatchers[Command.PASTE_CLIPBOARD_IMAGE](key)) {
-        handleClipboardImage();
-        return;
-      }
-
       // Fall back to the text buffer's default input handling for all other keys
       buffer.handleInput(key);
 
