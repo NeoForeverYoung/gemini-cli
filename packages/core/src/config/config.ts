@@ -638,7 +638,6 @@ export class Config {
       this.experimentsPromise = getExperiments(codeAssistServer)
         .then((experiments) => {
           this.setExperiments(experiments);
-          coreEvents.emitExperimentsChanged(experiments);
         })
         .catch((e) => {
           debugLogger.error('Failed to fetch experiments', e);
