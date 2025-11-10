@@ -5,8 +5,6 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { Experiments } from '../code_assist/experiments/experiments.js';
-
 /**
  * Defines the severity level for user-facing feedback.
  * This maps loosely to UI `MessageType`
@@ -54,21 +52,10 @@ export interface ModelChangedPayload {
   model: string;
 }
 
-/**
- * Payload for the 'experiments-changed' event.
- */
-export interface ExperimentsChangedPayload {
-  /**
-   * The new experiments that were set.
-   */
-  experiments: Experiments;
-}
-
 export enum CoreEvent {
   UserFeedback = 'user-feedback',
   FallbackModeChanged = 'fallback-mode-changed',
   ModelChanged = 'model-changed',
-  ExperimentsChanged = 'experiments-changed',
 }
 
 export class CoreEventEmitter extends EventEmitter {
@@ -118,14 +105,6 @@ export class CoreEventEmitter extends EventEmitter {
   }
 
   /**
-   * Notifies subscribers that the experiments have changed.
-   */
-  emitExperimentsChanged(experiments: Experiments): void {
-    const payload: ExperimentsChangedPayload = { experiments };
-    this.emit(CoreEvent.ExperimentsChanged, payload);
-  }
-
-  /**
    * Flushes buffered messages. Call this immediately after primary UI listener
    * subscribes.
    */
@@ -150,10 +129,6 @@ export class CoreEventEmitter extends EventEmitter {
     listener: (payload: ModelChangedPayload) => void,
   ): this;
   override on(
-    event: CoreEvent.ExperimentsChanged,
-    listener: (payload: ExperimentsChangedPayload) => void,
-  ): this;
-  override on(
     event: string | symbol,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     listener: (...args: any[]) => void,
@@ -174,10 +149,6 @@ export class CoreEventEmitter extends EventEmitter {
     listener: (payload: ModelChangedPayload) => void,
   ): this;
   override off(
-    event: CoreEvent.ExperimentsChanged,
-    listener: (payload: ExperimentsChangedPayload) => void,
-  ): this;
-  override off(
     event: string | symbol,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     listener: (...args: any[]) => void,
@@ -196,10 +167,6 @@ export class CoreEventEmitter extends EventEmitter {
   override emit(
     event: CoreEvent.ModelChanged,
     payload: ModelChangedPayload,
-  ): boolean;
-  override emit(
-    event: CoreEvent.ExperimentsChanged,
-    payload: ExperimentsChangedPayload,
   ): boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override emit(event: string | symbol, ...args: any[]): boolean {
