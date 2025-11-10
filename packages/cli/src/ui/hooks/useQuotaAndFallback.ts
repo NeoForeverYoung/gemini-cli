@@ -93,7 +93,7 @@ export function useQuotaAndFallback({
       }
 
       if (recommendation.action === 'silent') {
-        return 'retry';
+        return 'retry_once';
       }
 
       const dialogPlan = buildFallbackDialogPlan({
@@ -138,11 +138,8 @@ export function useQuotaAndFallback({
       setProQuotaRequest(null);
       isDialogPending.current = false; // Reset the flag here
 
-      if (
-        choice === 'retry' ||
-        choice === 'retry_once' ||
-        choice === 'retry_always'
-      ) {
+      if (choice === 'retry_once' || choice === 'retry_always') {
+        config.setQuotaErrorOccurred(false);
         historyManager.addItem(
           {
             type: MessageType.INFO,
@@ -152,7 +149,7 @@ export function useQuotaAndFallback({
         );
       }
     },
-    [proQuotaRequest, historyManager],
+    [proQuotaRequest, historyManager, config],
   );
 
   return {

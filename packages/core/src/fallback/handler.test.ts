@@ -127,14 +127,14 @@ describe('handleFallback', () => {
   });
 
   it('applies fallback and logs when handler resolves to retry', async () => {
-    mockHandler.mockResolvedValue('retry');
+    mockHandler.mockResolvedValue('retry_once');
 
     const result = await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH);
 
     expect(result).toEqual({
       shouldRetry: true,
       model: FALLBACK_MODEL,
-      intent: 'retry',
+      intent: 'retry_once',
     });
     expect(setActiveModelSpy).toHaveBeenCalledWith(FALLBACK_MODEL);
     expect(logFlashFallback).toHaveBeenCalledTimes(1);
@@ -182,7 +182,7 @@ describe('handleFallback', () => {
     expect(result).toEqual({
       shouldRetry: true,
       model: FALLBACK_MODEL,
-      intent: 'retry',
+      intent: 'retry_once',
     });
     expect(configWithoutHandler.setActiveModel).toHaveBeenCalledWith(
       FALLBACK_MODEL,
@@ -228,7 +228,7 @@ describe('handleFallback', () => {
 
   it('should pass the correct context (failedModel, fallbackModel, error) to the handler', async () => {
     const mockError = new Error('Quota Exceeded');
-    mockHandler.mockResolvedValue('retry');
+    mockHandler.mockResolvedValue('retry_once');
 
     await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH, mockError);
 
@@ -319,7 +319,7 @@ describe('handleFallback', () => {
       getModelAvailabilityService: vi.fn(() => availabilityWithNone),
     });
 
-    mockHandler.mockResolvedValue('retry');
+    mockHandler.mockResolvedValue('retry_once');
 
     const result = await handleFallback(
       configWithLastResort,
@@ -330,7 +330,7 @@ describe('handleFallback', () => {
     expect(result).toEqual({
       shouldRetry: true,
       model: FALLBACK_MODEL,
-      intent: 'retry',
+      intent: 'retry_once',
     });
     expect(configWithLastResort.setActiveModel).toHaveBeenCalledWith(
       FALLBACK_MODEL,
@@ -343,7 +343,7 @@ describe('handleFallback', () => {
       fallbackModelHandler: mockHandler,
     });
 
-    mockHandler.mockResolvedValue('retry');
+    mockHandler.mockResolvedValue('retry_once');
 
     const result = await handleFallback(
       configAlreadyFallback,
@@ -354,7 +354,7 @@ describe('handleFallback', () => {
     expect(result).toEqual({
       shouldRetry: true,
       model: FALLBACK_MODEL,
-      intent: 'retry',
+      intent: 'retry_once',
     });
     expect(configAlreadyFallback.setActiveModel).toHaveBeenCalledWith(
       FALLBACK_MODEL,

@@ -128,63 +128,6 @@ export class CoreEventEmitter extends EventEmitter<CoreEvents> {
       this.emit(CoreEvent.UserFeedback, payload);
     }
   }
-
-  override on(
-    event: CoreEvent.UserFeedback,
-    listener: (payload: UserFeedbackPayload) => void,
-  ): this;
-  override on(
-    event: CoreEvent.ModelChanged,
-    listener: (payload: ModelChangedPayload) => void,
-  ): this;
-  override on(
-    event: CoreEvent.MemoryChanged,
-    listener: (payload: MemoryChangedPayload) => void,
-  ): this;
-  override on(
-    event: string | symbol,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    listener: (...args: any[]) => void,
-  ): this {
-    return super.on(event, listener);
-  }
-
-  override off(
-    event: CoreEvent.UserFeedback,
-    listener: (payload: UserFeedbackPayload) => void,
-  ): this;
-  override off(
-    event: CoreEvent.ModelChanged,
-    listener: (payload: ModelChangedPayload) => void,
-  ): this;
-  override off(
-    event: CoreEvent.MemoryChanged,
-    listener: (payload: MemoryChangedPayload) => void,
-  ): this;
-  override off(
-    event: string | symbol,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    listener: (...args: any[]) => void,
-  ): this {
-    return super.off(event, listener);
-  }
-
-  override emit(
-    event: CoreEvent.UserFeedback,
-    payload: UserFeedbackPayload,
-  ): boolean;
-  override emit(
-    event: CoreEvent.ModelChanged,
-    payload: ModelChangedPayload,
-  ): boolean;
-  override emit(
-    event: CoreEvent.MemoryChanged,
-    payload: MemoryChangedPayload,
-  ): boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  override emit(event: string | symbol, ...args: any[]): boolean {
-    return super.emit(event, ...args);
-  }
 }
 
 export const coreEvents = new CoreEventEmitter();

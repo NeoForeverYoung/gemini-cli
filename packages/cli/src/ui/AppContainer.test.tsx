@@ -681,9 +681,9 @@ describe('AppContainer State Management', () => {
 
       // You can even verify that the plumbed function is callable
       act(() => {
-        capturedUIActions.handleProQuotaChoice('retry_later');
+        capturedUIActions.handleProQuotaChoice('retry_once');
       });
-      expect(mockHandler).toHaveBeenCalledWith('retry_later');
+      expect(mockHandler).toHaveBeenCalledWith('retry');
       unmount();
     });
   });
@@ -1683,7 +1683,7 @@ describe('AppContainer State Management', () => {
       unmount();
     });
 
-    it('updates currentModel when ModelChanged event is received', async () => {
+    it('currentModel always reflects user chosen model in config.getModel()', async () => {
       // Arrange: Mock initial model
       vi.spyOn(mockConfig, 'getModel').mockReturnValue('initial-model');
 
@@ -1709,13 +1709,15 @@ describe('AppContainer State Management', () => {
       )?.[1];
       expect(handler).toBeDefined();
 
-      // Act: Simulate ModelChanged event
+      // Act: Simulate ModelChanged event with a resolved model
+      // But ensure config.getModel() returns the configured model
+      vi.spyOn(mockConfig, 'getModel').mockReturnValue('auto');
       act(() => {
-        handler({ model: 'new-model' });
+        handler({ model: 'gemini-2.5-pro' });
       });
 
-      // Assert: Verify model is updated
-      expect(capturedUIState.currentModel).toBe('new-model');
+      // Assert: Verify model is updated to the configured model, not the resolved one
+      expect(capturedUIState.currentModel).toBe('auto');
       unmount();
     });
   });

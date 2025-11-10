@@ -547,7 +547,7 @@ describe('retryWithBackoff', () => {
       const fallbackOutcome: FallbackHandlerOutcome = {
         shouldRetry: true,
         model: 'fallback-model',
-        intent: 'retry',
+        intent: 'retry_once',
       };
 
       let attemptCount = 0;

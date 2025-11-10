@@ -107,7 +107,7 @@ export async function handleFallback(
   }
 
   if (intent === null) {
-    intent = action === 'silent' ? 'retry' : 'stop';
+    intent = action === 'silent' ? 'retry_once' : 'stop';
   }
 
   debugLogger.log('[fallback] handler intent resolved', intent);
@@ -134,8 +134,7 @@ export async function handleFallback(
       return { shouldRetry: true, model: fallbackModel, intent };
     }
 
-    case 'retry_once':
-    case 'retry': {
+    case 'retry_once': {
       const previousActive = config.getActiveModel();
       config.setActiveModel(fallbackModel);
       if (previousActive !== fallbackModel && authType) {

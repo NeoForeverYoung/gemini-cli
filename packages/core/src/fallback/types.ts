@@ -8,7 +8,6 @@
  * Defines the intent returned by the UI layer during a fallback scenario.
  */
 export type FallbackIntent =
-  | 'retry' // Immediately retry the current request with the fallback model.
   | 'retry_once' // Retry now, but allow the original model to be retried next turn.
   | 'retry_always' // Retry now and stick with the fallback for future turns.
   | 'stop'; // Stop the current request (no immediate retry).

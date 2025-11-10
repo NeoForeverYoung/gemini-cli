@@ -129,7 +129,7 @@ describe('useQuotaAndFallback', () => {
       new Error('transient'),
     );
 
-    expect(result).toBe('retry');
+    expect(result).toBe('retry_once');
     const expectedTransientMessage = [
       '🚦 Pardon Our Congestion! It looks like we are currently overwhelmed by too many requests! We are busy fixing this.',
       '🚦 Note: You can always use /model to select a different option or wait for capacity to recover.',

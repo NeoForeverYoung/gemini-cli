@@ -63,7 +63,7 @@ describe('Retry Utility Fallback Integration', () => {
       recommendation,
     ) => {
       expect(recommendation.selected).toBe(DEFAULT_GEMINI_FLASH_MODEL);
-      return 'retry';
+      return 'retry_once';
     };
 
     // Use the generalized setter
@@ -85,7 +85,7 @@ describe('Retry Utility Fallback Integration', () => {
     );
 
     // Verify it returns the correct intent
-    expect(result).toBe('retry');
+    expect(result).toBe('retry_once');
   });
 
   // This test validates the retry utility's logic for triggering the callback.
@@ -109,7 +109,7 @@ describe('Retry Utility Fallback Integration', () => {
       return {
         shouldRetry: true,
         model: DEFAULT_GEMINI_FLASH_MODEL,
-        intent: 'retry',
+        intent: 'retry_once',
       };
     });
 

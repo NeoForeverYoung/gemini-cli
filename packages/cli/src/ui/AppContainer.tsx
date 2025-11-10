@@ -35,7 +35,6 @@ import {
   type IdeContext,
   type UserTierId,
   type UserFeedbackPayload,
-  type ModelChangedPayload,
   IdeClient,
   ideContextStore,
   getErrorMessage,
@@ -49,7 +48,6 @@ import {
   coreEvents,
   CoreEvent,
   refreshServerHierarchicalMemory,
-  type ModelChangedPayload,
   type MemoryChangedPayload,
 } from '@google/gemini-cli-core';
 import { validateAuthMethod } from '../config/auth.js';
@@ -259,11 +257,10 @@ export const AppContainer = (props: AppContainerProps) => {
 
   // Subscribe to model change events from core
   useEffect(() => {
-    const handleModelChanged = (payload: ModelChangedPayload) => {
-      setCurrentModel(payload.model);
+    const handleModelChanged = () => {
+      setCurrentModel(config.getModel());
     };
 
-    // TODO: I don't think this is necessary
     // Initialize with current model
     setCurrentModel(config.getModel());
 
