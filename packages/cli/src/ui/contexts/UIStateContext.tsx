@@ -23,15 +23,32 @@ import type {
   UserTierId,
   IdeInfo,
   FallbackIntent,
+  FallbackRecommendation,
 } from '@google/gemini-cli-core';
 import type { DOMElement } from 'ink';
 import type { SessionStatsState } from '../contexts/SessionContext.js';
 import type { ExtensionUpdateState } from '../state/extensions.js';
 import type { UpdateObject } from '../utils/updateCheck.js';
 
+export type ResolvedModelRecommendation = Omit<
+  FallbackRecommendation,
+  'selected'
+> & {
+  selected: string;
+};
+
+export interface FallbackDialogOption {
+  label: string;
+  intent: FallbackIntent;
+  key: string;
+  defaultSelected?: boolean;
+}
+
 export interface ProQuotaDialogRequest {
   failedModel: string;
-  fallbackModel: string;
+  recommendation: ResolvedModelRecommendation;
+  title: string;
+  choices: FallbackDialogOption[];
   resolve: (intent: FallbackIntent) => void;
 }
 

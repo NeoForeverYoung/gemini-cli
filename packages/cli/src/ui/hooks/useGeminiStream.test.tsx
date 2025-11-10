@@ -219,6 +219,19 @@ describe('useGeminiStream', () => {
         .mockReturnValue(contentGeneratorConfig),
       getUseSmartEdit: () => false,
       getUseModelRouter: () => false,
+      getModelAvailabilityService: vi.fn(() => ({
+        resetTurn: vi.fn(),
+        markUnavailableForTurn: vi.fn(),
+        markRetryable: vi.fn(),
+        markTerminal: vi.fn(),
+        markHealthy: vi.fn(),
+        snapshot: vi.fn().mockReturnValue({ available: true }),
+        selectFirstAvailable: vi
+          .fn()
+          .mockReturnValue({ selected: 'gemini-2.5-pro', skipped: [] }),
+        on: vi.fn(),
+      })),
+      getFallbackModelCandidates: vi.fn(() => ['gemini-2.5-flash']),
     } as unknown as Config;
     mockOnDebugMessage = vi.fn();
     mockHandleSlashCommand = vi.fn().mockResolvedValue(false);

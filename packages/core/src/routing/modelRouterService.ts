@@ -18,6 +18,7 @@ import { OverrideStrategy } from './strategies/overrideStrategy.js';
 
 import { logModelRouting } from '../telemetry/loggers.js';
 import { ModelRoutingEvent } from '../telemetry/types.js';
+import { debugLogger } from '../utils/debugLogger.js';
 
 /**
  * A centralized service for making model routing decisions.
@@ -61,6 +62,11 @@ export class ModelRouterService {
         this.config,
         this.config.getBaseLlmClient(),
       );
+
+      debugLogger.log('[router] selected model', {
+        model: decision.model,
+        source: decision.metadata.source,
+      });
 
       const event = new ModelRoutingEvent(
         decision.model,

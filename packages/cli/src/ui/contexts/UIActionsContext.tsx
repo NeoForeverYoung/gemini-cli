@@ -8,7 +8,11 @@ import { createContext, useContext } from 'react';
 import { type Key } from '../hooks/useKeypress.js';
 import { type IdeIntegrationNudgeResult } from '../IdeIntegrationNudge.js';
 import { type FolderTrustChoice } from '../components/FolderTrustDialog.js';
-import { type AuthType, type EditorType } from '@google/gemini-cli-core';
+import {
+  type AuthType,
+  type EditorType,
+  type FallbackIntent,
+} from '@google/gemini-cli-core';
 import { type SettingScope } from '../../config/settings.js';
 import type { AuthState } from '../types.js';
 
@@ -40,7 +44,7 @@ export interface UIActions {
   refreshStatic: () => void;
   handleFinalSubmit: (value: string) => void;
   handleClearScreen: () => void;
-  handleProQuotaChoice: (choice: 'auth' | 'continue') => void;
+  handleProQuotaChoice: (choice: FallbackIntent) => void;
   setQueueErrorMessage: (message: string | null) => void;
   popAllMessages: (onPop: (messages: string | undefined) => void) => void;
   handleApiKeySubmit: (apiKey: string) => Promise<void>;

@@ -8,45 +8,53 @@ import type React from 'react';
 import { Box, Text } from 'ink';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
 import { theme } from '../semantic-colors.js';
+import type {
+  FallbackDialogOption,
+  ResolvedModelRecommendation,
+} from '../contexts/UIStateContext.js';
+import type { FallbackIntent } from '@google/gemini-cli-core';
 
 interface ProQuotaDialogProps {
   failedModel: string;
-  fallbackModel: string;
-  onChoice: (choice: 'auth' | 'continue') => void;
+  recommendation: ResolvedModelRecommendation;
+  title: string;
+  choices: FallbackDialogOption[];
+  onChoice: (choice: FallbackIntent) => void;
 }
 
 export function ProQuotaDialog({
   failedModel,
-  fallbackModel,
+  recommendation,
+  title,
+  choices,
   onChoice,
 }: ProQuotaDialogProps): React.JSX.Element {
-  const items = [
-    {
-      label: 'Change auth (executes the /auth command)',
-      value: 'auth' as const,
-      key: 'auth',
-    },
-    {
-      label: `Continue with ${fallbackModel}`,
-      value: 'continue' as const,
-      key: 'continue',
-    },
-  ];
+  const items = choices.map(({ label, intent, key }) => ({
+    label,
+    value: intent,
+    key,
+  }));
 
-  const handleSelect = (choice: 'auth' | 'continue') => {
-    onChoice(choice);
-  };
+  const defaultIndex = Math.max(
+    0,
+    choices.findIndex((choice) => choice.defaultSelected),
+  );
+
+  const fallbackModel = recommendation.selected;
 
   return (
     <Box borderStyle="round" flexDirection="column" paddingX={1}>
       <Text bold color={theme.status.warning}>
-        Pro quota limit reached for {failedModel}.
+        {title}
+      </Text>
+      <Text>
+        {failedModel} → {fallbackModel}
       </Text>
       <Box marginTop={1}>
         <RadioButtonSelect
           items={items}
-          initialIndex={1}
-          onSelect={handleSelect}
+          initialIndex={defaultIndex}
+          onSelect={onChoice}
         />
       </Box>
     </Box>

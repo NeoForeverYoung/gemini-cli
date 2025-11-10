@@ -17,7 +17,11 @@ import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
 import { retryWithBackoff } from './retry.js';
 import { AuthType } from '../core/contentGenerator.js';
 // Import the new types (Assuming this test file is in packages/core/src/utils/)
-import type { FallbackModelHandler } from '../fallback/types.js';
+import type {
+  FallbackHandlerOutcome,
+  FallbackModelHandler,
+  FallbackRecommendation,
+} from '../fallback/types.js';
 import type { GoogleApiError } from './googleErrors.js';
 import { TerminalQuotaError } from './googleQuotaErrors.js';
 
@@ -54,15 +58,29 @@ describe('Retry Utility Fallback Integration', () => {
   // This test validates the Config's ability to store and execute the handler contract.
   it('should execute the injected FallbackHandler contract correctly', async () => {
     // Set up a minimal handler for testing, ensuring it matches the new type.
-    const fallbackHandler: FallbackModelHandler = async () => 'retry';
+    const fallbackHandler: FallbackModelHandler = async (
+      _failed,
+      recommendation,
+    ) => {
+      expect(recommendation.selected).toBe(DEFAULT_GEMINI_FLASH_MODEL);
+      return 'retry';
+    };
 
     // Use the generalized setter
     config.setFallbackModelHandler(fallbackHandler);
 
     // Call the handler directly via the config property
+    const recommendation: FallbackRecommendation = {
+      selected: DEFAULT_GEMINI_FLASH_MODEL,
+      skipped: [],
+      action: 'prompt',
+      failureKind: 'terminal',
+      failedPolicy: undefined,
+      selectedPolicy: undefined,
+    };
     const result = await config.fallbackModelHandler!(
       'gemini-2.5-pro',
-      DEFAULT_GEMINI_FLASH_MODEL,
+      recommendation,
       new Error('test'),
     );
 
@@ -84,9 +102,15 @@ describe('Retry Utility Fallback Integration', () => {
       )
       .mockResolvedValueOnce('success after fallback');
 
-    const mockPersistent429Callback = vi.fn(async (_authType?: string) => {
+    const mockPersistent429Callback = vi.fn<
+      (_authType?: string) => Promise<FallbackHandlerOutcome>
+    >(async (_authType?: string) => {
       fallbackCalled = true;
-      return true;
+      return {
+        shouldRetry: true,
+        model: DEFAULT_GEMINI_FLASH_MODEL,
+        intent: 'retry',
+      };
     });
 
     const result = await retryWithBackoff(mockApiCall, {

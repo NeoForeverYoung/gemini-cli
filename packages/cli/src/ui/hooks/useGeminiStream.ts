@@ -26,7 +26,6 @@ import {
   GitService,
   UnauthorizedError,
   UserPromptEvent,
-  DEFAULT_GEMINI_FLASH_MODEL,
   logConversationFinishedEvent,
   ConversationFinishedEvent,
   ApprovalMode,
@@ -581,7 +580,7 @@ export const useGeminiStream = (
             config.getContentGeneratorConfig()?.authType,
             undefined,
             config.getModel(),
-            DEFAULT_GEMINI_FLASH_MODEL,
+            config.getFallbackModelCandidates()[0],
           ),
         },
         userMessageTimestamp,
@@ -825,6 +824,7 @@ export const useGeminiStream = (
 
           // Reset quota error flag when starting a new query (not a continuation)
           if (!options?.isContinuation) {
+            config.getModelAvailabilityService().resetTurn();
             setModelSwitchedFromQuotaError(false);
             config.setQuotaErrorOccurred(false);
           }
@@ -947,7 +947,7 @@ export const useGeminiStream = (
                       config.getContentGeneratorConfig()?.authType,
                       undefined,
                       config.getModel(),
-                      DEFAULT_GEMINI_FLASH_MODEL,
+                      config.getFallbackModelCandidates()[0],
                     ),
                   },
                   userMessageTimestamp,

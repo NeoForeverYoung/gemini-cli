@@ -12,7 +12,6 @@ import type { Config } from '../../config/config.js';
 import {
   DEFAULT_GEMINI_MODEL,
   DEFAULT_GEMINI_FLASH_MODEL,
-  DEFAULT_GEMINI_FLASH_LITE_MODEL,
 } from '../../config/models.js';
 
 describe('FallbackStrategy', () => {
@@ -20,67 +19,27 @@ describe('FallbackStrategy', () => {
   const mockContext = {} as RoutingContext;
   const mockClient = {} as BaseLlmClient;
 
-  it('should return null when not in fallback mode', async () => {
+  it('returns null when active model matches preferred', async () => {
     const mockConfig = {
-      isInFallbackMode: () => false,
       getModel: () => DEFAULT_GEMINI_MODEL,
+      getActiveModel: () => DEFAULT_GEMINI_MODEL,
     } as Config;
 
     const decision = await strategy.route(mockContext, mockConfig, mockClient);
     expect(decision).toBeNull();
   });
 
-  describe('when in fallback mode', () => {
-    it('should downgrade a pro model to the flash model', async () => {
-      const mockConfig = {
-        isInFallbackMode: () => true,
-        getModel: () => DEFAULT_GEMINI_MODEL,
-      } as Config;
+  it('returns active model when it differs from preferred', async () => {
+    const mockConfig = {
+      getModel: () => DEFAULT_GEMINI_MODEL,
+      getActiveModel: () => DEFAULT_GEMINI_FLASH_MODEL,
+    } as Config;
 
-      const decision = await strategy.route(
-        mockContext,
-        mockConfig,
-        mockClient,
-      );
+    const decision = await strategy.route(mockContext, mockConfig, mockClient);
 
-      expect(decision).not.toBeNull();
-      expect(decision?.model).toBe(DEFAULT_GEMINI_FLASH_MODEL);
-      expect(decision?.metadata.source).toBe('fallback');
-      expect(decision?.metadata.reasoning).toContain('In fallback mode');
-    });
-
-    it('should honor a lite model request', async () => {
-      const mockConfig = {
-        isInFallbackMode: () => true,
-        getModel: () => DEFAULT_GEMINI_FLASH_LITE_MODEL,
-      } as Config;
-
-      const decision = await strategy.route(
-        mockContext,
-        mockConfig,
-        mockClient,
-      );
-
-      expect(decision).not.toBeNull();
-      expect(decision?.model).toBe(DEFAULT_GEMINI_FLASH_LITE_MODEL);
-      expect(decision?.metadata.source).toBe('fallback');
-    });
-
-    it('should use the flash model if flash is requested', async () => {
-      const mockConfig = {
-        isInFallbackMode: () => true,
-        getModel: () => DEFAULT_GEMINI_FLASH_MODEL,
-      } as Config;
-
-      const decision = await strategy.route(
-        mockContext,
-        mockConfig,
-        mockClient,
-      );
-
-      expect(decision).not.toBeNull();
-      expect(decision?.model).toBe(DEFAULT_GEMINI_FLASH_MODEL);
-      expect(decision?.metadata.source).toBe('fallback');
-    });
+    expect(decision).not.toBeNull();
+    expect(decision?.model).toBe(DEFAULT_GEMINI_FLASH_MODEL);
+    expect(decision?.metadata.source).toBe('fallback');
+    expect(decision?.metadata.reasoning).toContain('fallback');
   });
 });

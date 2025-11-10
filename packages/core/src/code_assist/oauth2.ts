@@ -559,6 +559,7 @@ async function fetchAndCacheUserInfo(client: OAuth2Client): Promise<void> {
 
     const userInfo = await response.json();
     await userAccountManager.cacheGoogleAccount(userInfo.email);
+    console.log(`Logged in as ${userInfo.email}`);
   } catch (error) {
     debugLogger.log('Error retrieving user info:', error);
   }

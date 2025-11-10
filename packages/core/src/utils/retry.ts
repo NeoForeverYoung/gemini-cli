@@ -7,6 +7,13 @@
 import type { GenerateContentResponse } from '@google/genai';
 import { ApiError } from '@google/genai';
 import { AuthType } from '../core/contentGenerator.js';
+import type {
+  AvailabilityReason,
+  ModelAvailabilityService,
+} from '../availability/modelAvailabilityService.js';
+import type { ModelPolicy } from '../availability/modelPolicy.js';
+import type { Config } from '../config/config.js';
+import type { FallbackHandlerOutcome } from '../fallback/types.js';
 import {
   classifyGoogleError,
   RetryableQuotaError,
@@ -31,10 +38,19 @@ export interface RetryOptions {
   onPersistent429?: (
     authType?: string,
     error?: unknown,
-  ) => Promise<string | boolean | null>;
+    failedModel?: string,
+  ) => Promise<FallbackHandlerOutcome | null>;
   authType?: string;
   retryFetchErrors?: boolean;
   signal?: AbortSignal;
+  availability?: RetryAvailabilityContext;
+  config?: Config;
+}
+
+export interface RetryAvailabilityContext {
+  service: ModelAvailabilityService;
+  currentModel: string;
+  currentPolicy?: ModelPolicy;
 }
 
 const DEFAULT_RETRY_OPTIONS: RetryOptions = {
@@ -43,6 +59,34 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
   maxDelayMs: 30000, // 30 seconds
   shouldRetryOnError: defaultShouldRetry,
 };
+
+type AvailabilityOutcomeReason = Exclude<
+  AvailabilityReason,
+  'unavailable_for_turn'
+>;
+
+function applyModelAvailabilityOutcome(
+  service: ModelAvailabilityService | undefined,
+  attemptPolicy: ModelPolicy | undefined,
+  attemptModel: string | undefined,
+  reason: AvailabilityOutcomeReason,
+): void {
+  if (!service || !attemptModel) {
+    return;
+  }
+  const directive =
+    reason === 'quota'
+      ? attemptPolicy?.onTerminalErrorState
+      : attemptPolicy?.onRetryFailureState;
+  if (!directive) {
+    return;
+  }
+  service.applyAvailabilityDirective({
+    model: attemptModel,
+    directive,
+    reason,
+  });
+}
 
 /**
  * Default predicate function to determine if a retry should be attempted.
@@ -112,6 +156,8 @@ export async function retryWithBackoff<T>(
     shouldRetryOnContent,
     retryFetchErrors,
     signal,
+    availability,
+    config,
   } = {
     ...DEFAULT_RETRY_OPTIONS,
     ...cleanOptions,
@@ -119,19 +165,65 @@ export async function retryWithBackoff<T>(
 
   let attempt = 0;
   let currentDelay = initialDelayMs;
+  let queuedFallbackOutcome: FallbackHandlerOutcome | undefined;
+  let currentFallbackOutcome: FallbackHandlerOutcome | undefined;
+
+  // Ensures Config and availability context both reflect the same active model.
+  const setActiveModelAndSync = (model: string) => {
+    if (!config) return;
+    config.setActiveModel(model);
+    if (availability) {
+      availability.currentModel = model;
+      availability.currentPolicy = config.getModelPolicy(model);
+    }
+  };
+
+  // Applies the fallback requested by the previous attempt, if any. This runs
+  // exactly once per loop iteration before the next apiCall is made.
+  const prepareFallbackForNextAttempt = () => {
+    if (
+      !config ||
+      !queuedFallbackOutcome?.shouldRetry ||
+      !queuedFallbackOutcome.model
+    ) {
+      queuedFallbackOutcome = undefined;
+      return;
+    }
+    currentFallbackOutcome = queuedFallbackOutcome;
+    queuedFallbackOutcome = undefined;
+    setActiveModelAndSync(currentFallbackOutcome.model!);
+  };
+
+  // Restores the caller's previous model once an attempt finishes if the
+  // fallback was a one-shot (retry_once). For sticky fallbacks it simply clears
+  // the bookkeeping.
+  const restoreModelAfterRetryOnce = () => {
+    const restoreTarget = currentFallbackOutcome?.restoreTo;
+    if (restoreTarget) {
+      setActiveModelAndSync(restoreTarget);
+    }
+    currentFallbackOutcome = undefined;
+  };
 
   while (attempt < maxAttempts) {
     if (signal?.aborted) {
       throw createAbortError();
     }
+    prepareFallbackForNextAttempt();
     attempt++;
     try {
       const result = await fn();
+
+      const attemptModel = availability?.currentModel;
+      if (attemptModel && availability) {
+        availability.service.markHealthy(attemptModel);
+      }
 
       if (
         shouldRetryOnContent &&
         shouldRetryOnContent(result as GenerateContentResponse)
       ) {
+        restoreModelAfterRetryOnce();
         const jitter = currentDelay * 0.3 * (Math.random() * 2 - 1);
         const delayWithJitter = Math.max(0, currentDelay + jitter);
         await delay(delayWithJitter, signal);
@@ -139,22 +231,36 @@ export async function retryWithBackoff<T>(
         continue;
       }
 
+      restoreModelAfterRetryOnce();
       return result;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
+        restoreModelAfterRetryOnce();
         throw error;
       }
 
       const classifiedError = classifyGoogleError(error);
+      const attemptModel = availability?.currentModel;
+      const attemptPolicy = availability?.currentPolicy;
+
+      restoreModelAfterRetryOnce();
 
       if (classifiedError instanceof TerminalQuotaError) {
+        applyModelAvailabilityOutcome(
+          availability?.service,
+          attemptPolicy,
+          attemptModel,
+          'quota',
+        );
         if (onPersistent429 && authType === AuthType.LOGIN_WITH_GOOGLE) {
           try {
-            const fallbackModel = await onPersistent429(
+            const fallbackOutcome = await onPersistent429(
               authType,
               classifiedError,
+              attemptModel,
             );
-            if (fallbackModel) {
+            if (fallbackOutcome?.shouldRetry) {
+              queuedFallbackOutcome = fallbackOutcome;
               attempt = 0; // Reset attempts and retry with the new model.
               currentDelay = initialDelayMs;
               continue;
@@ -168,13 +274,21 @@ export async function retryWithBackoff<T>(
 
       if (classifiedError instanceof RetryableQuotaError) {
         if (attempt >= maxAttempts) {
+          applyModelAvailabilityOutcome(
+            availability?.service,
+            attemptPolicy,
+            attemptModel,
+            'capacity',
+          );
           if (onPersistent429 && authType === AuthType.LOGIN_WITH_GOOGLE) {
             try {
-              const fallbackModel = await onPersistent429(
+              const fallbackOutcome = await onPersistent429(
                 authType,
                 classifiedError,
+                attemptModel,
               );
-              if (fallbackModel) {
+              if (fallbackOutcome?.shouldRetry) {
+                queuedFallbackOutcome = fallbackOutcome;
                 attempt = 0; // Reset attempts and retry with the new model.
                 currentDelay = initialDelayMs;
                 continue;

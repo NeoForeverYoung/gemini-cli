@@ -35,7 +35,7 @@ import {
   type IdeContext,
   type UserTierId,
   type UserFeedbackPayload,
-  DEFAULT_GEMINI_FLASH_MODEL,
+  type ModelChangedPayload,
   IdeClient,
   ideContextStore,
   getErrorMessage,
@@ -205,14 +205,7 @@ export const AppContainer = (props: AppContainerProps) => {
   );
 
   // Helper to determine the effective model, considering the fallback state.
-  const getEffectiveModel = useCallback(() => {
-    if (config.isInFallbackMode()) {
-      return DEFAULT_GEMINI_FLASH_MODEL;
-    }
-    return config.getModel();
-  }, [config]);
-
-  const [currentModel, setCurrentModel] = useState(getEffectiveModel());
+  const [currentModel, setCurrentModel] = useState(config.getModel());
 
   const [userTier, setUserTier] = useState<UserTierId | undefined>(undefined);
 
@@ -258,18 +251,19 @@ export const AppContainer = (props: AppContainerProps) => {
     [historyManager.addItem],
   );
 
-  // Subscribe to fallback mode changes from core
+  // Subscribe to model change events from core
   useEffect(() => {
-    const handleFallbackModeChanged = () => {
-      const effectiveModel = getEffectiveModel();
-      setCurrentModel(effectiveModel);
+    const handleModelChanged = (_payload: ModelChangedPayload) => {
+      setCurrentModel(config.getModel());
     };
 
-    coreEvents.on(CoreEvent.FallbackModeChanged, handleFallbackModeChanged);
+    setCurrentModel(config.getModel());
+    coreEvents.on(CoreEvent.ModelChanged, handleModelChanged);
+
     return () => {
-      coreEvents.off(CoreEvent.FallbackModeChanged, handleFallbackModeChanged);
+      coreEvents.off(CoreEvent.ModelChanged, handleModelChanged);
     };
-  }, [getEffectiveModel]);
+  }, [config]);
 
   const {
     consoleMessages,

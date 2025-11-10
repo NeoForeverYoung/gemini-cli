@@ -87,6 +87,8 @@ export * from './ide/types.js';
 
 // Export Shell Execution Service
 export * from './services/shellExecutionService.js';
+export * from './availability/modelAvailabilityService.js';
+export * from './availability/modelPolicy.js';
 
 // Export base tool definitions
 export * from './tools/tools.js';

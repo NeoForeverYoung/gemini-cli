@@ -69,12 +69,34 @@ const mockContentGenerator = {
   embedContent: mockEmbedContent,
 } as unknown as Mocked<ContentGenerator>;
 
+const mockAvailabilityService = {
+  markTerminal: vi.fn(),
+  markHealthy: vi.fn(),
+  markUnavailableForTurn: vi.fn(),
+  snapshot: vi.fn().mockReturnValue({ available: true }),
+  selectFirstAvailable: vi
+    .fn()
+    .mockReturnValue({ selected: null, skipped: [] }),
+  on: vi.fn(),
+  resetTurn: vi.fn(),
+};
+
 const mockConfig = {
   getSessionId: vi.fn().mockReturnValue('test-session-id'),
   getContentGeneratorConfig: vi
     .fn()
     .mockReturnValue({ authType: AuthType.USE_GEMINI }),
   getEmbeddingModel: vi.fn().mockReturnValue('test-embedding-model'),
+  getModelAvailabilityService: vi.fn().mockReturnValue(mockAvailabilityService),
+  getActiveModel: vi.fn().mockReturnValue('test-model'),
+  setActiveModel: vi.fn(),
+  getModelPolicy: vi.fn().mockImplementation((requestedModel: string) => ({
+    model: requestedModel,
+    onTerminalError: 'prompt',
+    onTransientError: 'prompt',
+    onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE',
+    onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN',
+  })),
 } as unknown as Mocked<Config>;
 
 // Helper to create a mock GenerateContentResponse

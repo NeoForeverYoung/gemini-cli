@@ -44,7 +44,11 @@ vi.mock('@google/gemini-cli-core', async (importOriginal) => {
 import type { LoadedSettings } from '../config/settings.js';
 import type { InitializationResult } from '../core/initializer.js';
 import { useQuotaAndFallback } from './hooks/useQuotaAndFallback.js';
-import { UIStateContext, type UIState } from './contexts/UIStateContext.js';
+import {
+  UIStateContext,
+  type UIState,
+  type ResolvedModelRecommendation,
+} from './contexts/UIStateContext.js';
 import {
   UIActionsContext,
   type UIActions,
@@ -611,9 +615,15 @@ describe('AppContainer State Management', () => {
 
     it('passes a valid proQuotaRequest to UIStateContext when provided by the hook', async () => {
       // Arrange: Create a mock request object that a UI dialog would receive
+      const mockRecommendation: ResolvedModelRecommendation = {
+        selected: 'gemini-flash',
+        skipped: [],
+        action: 'prompt',
+        failureKind: 'terminal',
+      };
       const mockRequest = {
         failedModel: 'gemini-pro',
-        fallbackModel: 'gemini-flash',
+        recommendation: mockRecommendation,
         resolve: vi.fn(),
       };
       mockedUseQuotaAndFallback.mockReturnValue({

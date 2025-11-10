@@ -8,8 +8,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApiError } from '@google/genai';
 import { AuthType } from '../core/contentGenerator.js';
+import { ModelAvailabilityService } from '../availability/modelAvailabilityService.js';
 import type { HttpError } from './retry.js';
 import { retryWithBackoff } from './retry.js';
+import type { Config } from '../config/config.js';
+import type { FallbackHandlerOutcome } from '../fallback/types.js';
 import { setSimulate429 } from './testUtils.js';
 import { debugLogger } from './debugLogger.js';
 import {
@@ -207,6 +210,134 @@ describe('retryWithBackoff', () => {
     expect(mockFn).toHaveBeenCalledTimes(2);
   });
 
+  it('applies terminal policy directives when a terminal quota error occurs', async () => {
+    const service = new ModelAvailabilityService();
+    const markTerminalSpy = vi.spyOn(service, 'markTerminal');
+    const markUnavailableForTurnSpy = vi.spyOn(
+      service,
+      'markUnavailableForTurn',
+    );
+    vi.spyOn(service, 'markHealthy');
+
+    const policy = {
+      model: 'gemini-2.5-pro',
+      onTerminalError: 'silent' as const,
+      onTransientError: 'prompt' as const,
+      onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+      onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN' as const,
+    };
+
+    const terminalError = new TerminalQuotaError('quota', {
+      code: 429,
+      message: 'quota',
+      details: [],
+    } as never);
+
+    await expect(
+      retryWithBackoff(
+        async () => {
+          throw terminalError;
+        },
+        {
+          maxAttempts: 1,
+          availability: {
+            service,
+            currentModel: 'gemini-2.5-pro',
+            currentPolicy: policy,
+          },
+        },
+      ),
+    ).rejects.toBe(terminalError);
+
+    expect(markTerminalSpy).toHaveBeenCalledWith('gemini-2.5-pro', 'quota');
+    expect(markUnavailableForTurnSpy).not.toHaveBeenCalled();
+  });
+
+  it('applies transient policy directives when retryable quota errors persist', async () => {
+    const service = new ModelAvailabilityService();
+    const markTerminalSpy = vi.spyOn(service, 'markTerminal');
+    const markUnavailableForTurnSpy = vi.spyOn(
+      service,
+      'markUnavailableForTurn',
+    );
+    vi.spyOn(service, 'markHealthy');
+
+    const policy = {
+      model: 'gemini-2.5-pro',
+      onTerminalError: 'silent' as const,
+      onTransientError: 'prompt' as const,
+      onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+      onRetryFailureState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+    };
+
+    const retryableError = new RetryableQuotaError(
+      'throttled',
+      {
+        code: 429,
+        message: 'throttled',
+        details: [],
+      } as never,
+      1,
+    );
+
+    const promise = retryWithBackoff(
+      async () => {
+        throw retryableError;
+      },
+      {
+        maxAttempts: 2,
+        availability: {
+          service,
+          currentModel: 'gemini-2.5-pro',
+          currentPolicy: policy,
+        },
+      },
+    );
+
+    await Promise.all([
+      expect(promise).rejects.toBe(retryableError),
+      vi.runAllTimersAsync(),
+    ]);
+
+    expect(markUnavailableForTurnSpy).not.toHaveBeenCalled();
+    expect(markTerminalSpy).toHaveBeenCalledWith('gemini-2.5-pro', 'capacity');
+  });
+
+  it('gracefully skips directives when availability policy is missing for a terminal error', async () => {
+    const service = new ModelAvailabilityService();
+    const markTerminalSpy = vi.spyOn(service, 'markTerminal');
+    const markUnavailableForTurnSpy = vi.spyOn(
+      service,
+      'markUnavailableForTurn',
+    );
+    vi.spyOn(service, 'markHealthy');
+
+    const terminalError = new TerminalQuotaError('quota', {
+      code: 429,
+      message: 'quota',
+      details: [],
+    } as never);
+
+    await expect(
+      retryWithBackoff(
+        async () => {
+          throw terminalError;
+        },
+        {
+          maxAttempts: 1,
+          availability: {
+            service,
+            currentModel: 'gemini-2.5-pro',
+            currentPolicy: undefined,
+          },
+        },
+      ),
+    ).rejects.toBe(terminalError);
+
+    expect(markTerminalSpy).not.toHaveBeenCalled();
+    expect(markUnavailableForTurnSpy).not.toHaveBeenCalled();
+  });
+
   it('should use default shouldRetry if not provided, not retrying on generic error with status 400', async () => {
     const mockFn = vi.fn(async () => {
       const error = new Error('Bad Request') as any;
@@ -341,8 +472,123 @@ describe('retryWithBackoff', () => {
   });
 
   describe('Flash model fallback for OAuth users', () => {
+    const createMockConfig = () => {
+      const setActiveModel = vi.fn();
+      const getModelPolicy = vi.fn().mockReturnValue({
+        model: 'original-model',
+        onTerminalError: 'prompt',
+        onTransientError: 'prompt',
+        onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+        onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN' as const,
+      });
+      return {
+        setActiveModel,
+        getModelPolicy,
+      };
+    };
+
+    it('applies retry_once fallback for a single attempt and restores afterwards', async () => {
+      const config = createMockConfig();
+      const availability = {
+        service: new ModelAvailabilityService(),
+        currentModel: 'original-model',
+        currentPolicy: config.getModelPolicy('original-model'),
+      };
+      const fallbackOutcome: FallbackHandlerOutcome = {
+        shouldRetry: true,
+        model: 'fallback-model',
+        intent: 'retry_once',
+        restoreTo: 'original-model',
+      };
+
+      let attemptCount = 0;
+      const mockFn = vi.fn().mockImplementation(async () => {
+        attemptCount++;
+        if (attemptCount === 1) {
+          throw new TerminalQuotaError('Daily limit reached', {} as any);
+        }
+        if (attemptCount === 2) {
+          throw new Error('fallback failed');
+        }
+        return 'success';
+      });
+
+      const promise = retryWithBackoff(mockFn, {
+        maxAttempts: 3,
+        availability,
+        config: config as unknown as Config,
+        onPersistent429: vi
+          .fn()
+          .mockResolvedValueOnce(fallbackOutcome)
+          .mockResolvedValue(null),
+        authType: AuthType.LOGIN_WITH_GOOGLE,
+      });
+
+      await expect(promise).rejects.toThrow('fallback failed');
+
+      expect(config.setActiveModel).toHaveBeenNthCalledWith(
+        1,
+        'fallback-model',
+      );
+      expect(config.setActiveModel).toHaveBeenNthCalledWith(
+        2,
+        'original-model',
+      );
+      expect(config.setActiveModel).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps fallback active for retry intent without restore', async () => {
+      const config = createMockConfig();
+      const availability = {
+        service: new ModelAvailabilityService(),
+        currentModel: 'original-model',
+        currentPolicy: config.getModelPolicy('original-model'),
+      };
+      const fallbackOutcome: FallbackHandlerOutcome = {
+        shouldRetry: true,
+        model: 'fallback-model',
+        intent: 'retry',
+      };
+
+      let attemptCount = 0;
+      const mockFn = vi.fn().mockImplementation(async () => {
+        attemptCount++;
+        if (attemptCount === 1) {
+          throw new TerminalQuotaError('Daily limit reached', {} as any);
+        }
+        if (attemptCount === 2) {
+          throw new Error('fallback failed');
+        }
+        return 'success';
+      });
+
+      const promise = retryWithBackoff(mockFn, {
+        maxAttempts: 3,
+        availability,
+        config: config as unknown as Config,
+        onPersistent429: vi
+          .fn()
+          .mockResolvedValueOnce(fallbackOutcome)
+          .mockResolvedValue(null),
+        authType: AuthType.LOGIN_WITH_GOOGLE,
+      });
+
+      await expect(promise).rejects.toThrow('fallback failed');
+
+      expect(config.setActiveModel).toHaveBeenNthCalledWith(
+        1,
+        'fallback-model',
+      );
+      expect(config.setActiveModel).not.toHaveBeenCalledWith('original-model');
+    });
+
     it('should trigger fallback for OAuth personal users on TerminalQuotaError', async () => {
-      const fallbackCallback = vi.fn().mockResolvedValue('gemini-2.5-flash');
+      const fallbackOutcome = {
+        shouldRetry: true,
+        model: 'gemini-2.5-flash',
+        intent: 'retry' as const,
+      };
+      const fallbackCallback = vi.fn().mockResolvedValue(fallbackOutcome);
 
       let fallbackOccurred = false;
       const mockFn = vi.fn().mockImplementation(async () => {
@@ -384,9 +630,11 @@ describe('retryWithBackoff', () => {
       });
 
       // Attach the rejection expectation *before* running timers
-      // eslint-disable-next-line vitest/valid-expect
-      const assertionPromise = expect(promise).rejects.toThrow();
-      await vi.runAllTimersAsync();
+      const assertionPromise = await expect(promise).rejects.toThrow();
+
+      // Advance time to trigger the retry delay (12345ms)
+      await vi.advanceTimersByTimeAsync(12345 + 100);
+
       await assertionPromise;
 
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 12345);
@@ -432,5 +680,255 @@ describe('retryWithBackoff', () => {
       expect.objectContaining({ name: 'AbortError' }),
     );
     expect(mockFn).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Verification Scenarios', () => {
+    const createMockConfig = () => {
+      const setActiveModel = vi.fn();
+      const getModelPolicy = vi.fn();
+      const getActiveModel = vi.fn();
+      return {
+        setActiveModel,
+        getModelPolicy,
+        getActiveModel,
+      };
+    };
+
+    const createAvailabilityContext = (
+      service: ModelAvailabilityService,
+      model: string,
+      policy: any,
+    ) => ({
+      service,
+      currentModel: model,
+      currentPolicy: policy,
+    });
+
+    it('Scenario A: Primary model fails with TerminalQuotaError (Quota) -> Fallback to Secondary (retry_always)', async () => {
+      const service = new ModelAvailabilityService();
+      const config = createMockConfig();
+      const primaryPolicy = {
+        model: 'test-model-primary',
+        onTerminalError: 'prompt',
+        onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE',
+      };
+      config.getModelPolicy.mockReturnValue(primaryPolicy);
+
+      const onPersistent429 = vi.fn().mockResolvedValue({
+        shouldRetry: true,
+        model: 'test-model-fallback',
+        intent: 'retry_always',
+      });
+
+      let attempt = 0;
+      const apiCall = vi.fn().mockImplementation(async () => {
+        attempt++;
+        if (attempt === 1) {
+          throw new TerminalQuotaError('Quota exhausted', {} as any);
+        }
+        return 'success';
+      });
+
+      await retryWithBackoff(apiCall, {
+        maxAttempts: 3,
+        availability: createAvailabilityContext(
+          service,
+          'test-model-primary',
+          primaryPolicy,
+        ),
+        config: config as unknown as Config,
+        onPersistent429,
+        authType: AuthType.LOGIN_WITH_GOOGLE,
+      });
+
+      expect(service.snapshot('test-model-primary')).toEqual({
+        available: false,
+        reason: 'quota',
+      });
+      expect(config.setActiveModel).toHaveBeenCalledWith('test-model-fallback');
+      expect(apiCall).toHaveBeenCalledTimes(2);
+    });
+
+    it('Scenario B: Primary model fails with RetryableQuotaError (Capacity) -> Fallback to Secondary (retry_once)', async () => {
+      const service = new ModelAvailabilityService();
+      const config = createMockConfig();
+      const primaryPolicy = {
+        model: 'test-model-primary',
+        onTransientError: 'prompt',
+        onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN',
+      };
+      config.getModelPolicy.mockReturnValue(primaryPolicy);
+
+      const onPersistent429 = vi.fn().mockResolvedValue({
+        shouldRetry: true,
+        model: 'test-model-fallback',
+        intent: 'retry_once',
+        restoreTo: 'test-model-primary',
+      });
+
+      let attempt = 0;
+      const apiCall = vi.fn().mockImplementation(async () => {
+        attempt++;
+        if (attempt <= 3) {
+          throw new RetryableQuotaError('Capacity overloaded', {} as any, 1);
+        }
+        return 'success';
+      });
+
+      const promise = retryWithBackoff(apiCall, {
+        maxAttempts: 3,
+        initialDelayMs: 10,
+        availability: createAvailabilityContext(
+          service,
+          'test-model-primary',
+          primaryPolicy,
+        ),
+        config: config as unknown as Config,
+        onPersistent429,
+        authType: AuthType.LOGIN_WITH_GOOGLE,
+      });
+
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(service.snapshot('test-model-primary')).toEqual({
+        available: false,
+        reason: 'unavailable_for_turn',
+      });
+      expect(config.setActiveModel).toHaveBeenCalledWith('test-model-fallback');
+      expect(config.setActiveModel).toHaveBeenLastCalledWith(
+        'test-model-primary',
+      );
+      expect(apiCall).toHaveBeenCalledTimes(4);
+    });
+
+    it('Scenario C: 429 with "Stop" intent (No automatic failover)', async () => {
+      const service = new ModelAvailabilityService();
+      const config = createMockConfig();
+      const primaryPolicy = {
+        model: 'test-model-primary',
+        onTransientError: 'prompt',
+        onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN',
+      };
+      config.getModelPolicy.mockReturnValue(primaryPolicy);
+
+      const onPersistent429 = vi.fn().mockResolvedValue({
+        shouldRetry: false,
+        intent: 'stop',
+      });
+
+      const error = new RetryableQuotaError(
+        'Capacity overloaded',
+        {} as any,
+        1,
+      );
+      const apiCall = vi.fn().mockRejectedValue(error);
+
+      const promise = retryWithBackoff(apiCall, {
+        maxAttempts: 3,
+        initialDelayMs: 10,
+        availability: createAvailabilityContext(
+          service,
+          'test-model-primary',
+          primaryPolicy,
+        ),
+        config: config as unknown as Config,
+        onPersistent429,
+        authType: AuthType.LOGIN_WITH_GOOGLE,
+      });
+
+      // Capture the rejection promise before advancing timers
+      const expectation =
+        await expect(promise).rejects.toThrow(RetryableQuotaError);
+
+      await vi.runAllTimersAsync();
+      await expectation;
+
+      expect(service.snapshot('test-model-primary')).toEqual({
+        available: false,
+        reason: 'unavailable_for_turn',
+      });
+    });
+
+    it('Scenario D: Nested Fallback - Primary (retry_once) -> Secondary (fails) -> Tertiary', async () => {
+      const service = new ModelAvailabilityService();
+      const config = createMockConfig();
+      const primaryPolicy = { model: 'test-model-primary' };
+
+      config.getModelPolicy.mockImplementation((model) => ({ model }));
+
+      const fallbackOutcome1: FallbackHandlerOutcome = {
+        shouldRetry: true,
+        model: 'test-model-secondary',
+        intent: 'retry_once',
+        restoreTo: 'test-model-primary',
+      };
+
+      const fallbackOutcome2: FallbackHandlerOutcome = {
+        shouldRetry: true,
+        model: 'test-model-tertiary',
+        intent: 'retry_always',
+      };
+
+      let callCount = 0;
+      let modelAtFallback2 = '';
+
+      const onPersistent429 = vi
+        .fn()
+        .mockImplementation(async (auth, error, failedModel) => {
+          callCount++;
+          if (callCount === 1) {
+            return fallbackOutcome1;
+          }
+          if (callCount === 2) {
+            modelAtFallback2 = failedModel;
+            return fallbackOutcome2;
+          }
+          return null;
+        });
+
+      let attempt = 0;
+      const apiCall = vi.fn().mockImplementation(async () => {
+        attempt++;
+        // Attempt 1-3: Primary fails (Capacity)
+        if (attempt <= 3) {
+          throw new RetryableQuotaError('Primary Capacity', {} as any, 1);
+        }
+        // Attempt 4: Secondary fails (Quota)
+        if (attempt === 4) {
+          throw new TerminalQuotaError('Secondary Quota', {} as any);
+        }
+        // Attempt 5: Tertiary succeeds
+        return 'success';
+      });
+
+      const promise = retryWithBackoff(apiCall, {
+        maxAttempts: 3,
+        initialDelayMs: 10,
+        availability: createAvailabilityContext(
+          service,
+          'test-model-primary',
+          primaryPolicy,
+        ),
+        config: config as unknown as Config,
+        onPersistent429,
+        authType: AuthType.LOGIN_WITH_GOOGLE,
+      });
+
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Verify sequence
+      // 1. Primary -> Secondary
+      expect(config.setActiveModel).toHaveBeenCalledWith(
+        'test-model-secondary',
+      );
+
+      // 2. Secondary -> Tertiary
+      expect(config.setActiveModel).toHaveBeenCalledWith('test-model-tertiary');
+
+      // 3. CRITICAL CHECK: Did we identify the failed model correctly?
+      expect(modelAtFallback2).toBe('test-model-secondary');
+    });
   });
 });

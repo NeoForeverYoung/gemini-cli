@@ -5,13 +5,13 @@
  */
 
 import type { Config } from '../../config/config.js';
-import { getEffectiveModel } from '../../config/models.js';
 import type { BaseLlmClient } from '../../core/baseLlmClient.js';
 import type {
   RoutingContext,
   RoutingDecision,
   RoutingStrategy,
 } from '../routingStrategy.js';
+import { DEFAULT_GEMINI_MODEL_AUTO } from '../../config/models.js';
 
 export class FallbackStrategy implements RoutingStrategy {
   readonly name = 'fallback';
@@ -21,22 +21,21 @@ export class FallbackStrategy implements RoutingStrategy {
     config: Config,
     _baseLlmClient: BaseLlmClient,
   ): Promise<RoutingDecision | null> {
-    const isInFallbackMode: boolean = config.isInFallbackMode();
+    const preferredModel = config.getModel();
+    const activeModel = config.getActiveModel();
 
-    if (!isInFallbackMode) {
+    if (
+      preferredModel === DEFAULT_GEMINI_MODEL_AUTO ||
+      activeModel === preferredModel
+    ) {
       return null;
     }
-
-    const effectiveModel = getEffectiveModel(
-      isInFallbackMode,
-      config.getModel(),
-    );
     return {
-      model: effectiveModel,
+      model: activeModel,
       metadata: {
         source: this.name,
         latencyMs: 0,
-        reasoning: `In fallback mode. Using: ${effectiveModel}`,
+        reasoning: `Active model differs from preferred (${preferredModel}); using fallback: ${activeModel}`,
       },
     };
   }

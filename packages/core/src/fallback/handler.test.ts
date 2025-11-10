@@ -10,9 +10,9 @@ import {
   expect,
   vi,
   beforeEach,
+  afterEach,
   type Mock,
   type MockInstance,
-  afterEach,
 } from 'vitest';
 import { handleFallback } from './handler.js';
 import type { Config } from '../config/config.js';
@@ -23,8 +23,9 @@ import {
 } from '../config/models.js';
 import { logFlashFallback } from '../telemetry/index.js';
 import type { FallbackModelHandler } from './types.js';
+import { RetryableQuotaError } from '../utils/googleQuotaErrors.js';
+import type { ModelAvailabilityService } from '../availability/modelAvailabilityService.js';
 
-// Mock the telemetry logger and event class
 vi.mock('../telemetry/index.js', () => ({
   logFlashFallback: vi.fn(),
   FlashFallbackEvent: class {},
@@ -35,26 +36,71 @@ const FALLBACK_MODEL = DEFAULT_GEMINI_FLASH_MODEL;
 const AUTH_OAUTH = AuthType.LOGIN_WITH_GOOGLE;
 const AUTH_API_KEY = AuthType.USE_GEMINI;
 
-const createMockConfig = (overrides: Partial<Config> = {}): Config =>
-  ({
-    isInFallbackMode: vi.fn(() => false),
-    setFallbackMode: vi.fn(),
-    fallbackHandler: undefined,
+const createMockConfig = (overrides: Partial<Config> = {}): Config => {
+  const failedPolicy = {
+    model: MOCK_PRO_MODEL,
+    onTerminalError: 'prompt' as const,
+    onTransientError: 'prompt' as const,
+    onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+    onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN' as const,
+  };
+
+  const fallbackPolicy = {
+    model: FALLBACK_MODEL,
+    onTerminalError: 'prompt' as const,
+    onTransientError: 'prompt' as const,
+    onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+    onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN' as const,
+    isLastResort: true,
+  };
+
+  const availabilityStub: ModelAvailabilityService = {
+    markTerminal: vi.fn(),
+    markHealthy: vi.fn(),
+    markUnavailableForTurn: vi.fn(),
+    snapshot: vi.fn().mockReturnValue({ available: true }),
+    selectFirstAvailable: vi
+      .fn()
+      .mockReturnValue({ selected: FALLBACK_MODEL, skipped: [] }),
+    on: vi.fn(),
+    resetTurn: vi.fn(),
+  } as unknown as ModelAvailabilityService;
+
+  const baseConfig: Partial<Config> = {
+    getModel: vi.fn(() => MOCK_PRO_MODEL),
+    getActiveModel: vi.fn(() => MOCK_PRO_MODEL),
+    setActiveModel: vi.fn(),
+    setModel: vi.fn(function mockSetModel(this: Config, model: string) {
+      (this.setActiveModel as Mock)(model);
+    }),
+    getFallbackPolicyContext: vi.fn(() => ({
+      failedPolicy,
+      candidates: [fallbackPolicy],
+    })),
+    getModelPolicies: vi.fn(() => [failedPolicy, fallbackPolicy]),
+    getFallbackModelCandidates: vi.fn(() => [FALLBACK_MODEL]),
+    getModelAvailabilityService: vi.fn(() => availabilityStub),
+  };
+
+  return {
+    ...baseConfig,
     ...overrides,
-  }) as unknown as Config;
+  } as unknown as Config;
+};
 
 describe('handleFallback', () => {
   let mockConfig: Config;
   let mockHandler: Mock<FallbackModelHandler>;
   let consoleErrorSpy: MockInstance;
+  let setActiveModelSpy: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockHandler = vi.fn();
-    // Default setup: OAuth user, Pro model failed, handler injected
     mockConfig = createMockConfig({
       fallbackModelHandler: mockHandler,
     });
+    setActiveModelSpy = mockConfig.setActiveModel as unknown as Mock;
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -62,7 +108,7 @@ describe('handleFallback', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('should return null immediately if authType is not OAuth', async () => {
+  it('returns null when auth type is not OAuth', async () => {
     const result = await handleFallback(
       mockConfig,
       MOCK_PRO_MODEL,
@@ -70,149 +116,223 @@ describe('handleFallback', () => {
     );
     expect(result).toBeNull();
     expect(mockHandler).not.toHaveBeenCalled();
-    expect(mockConfig.setFallbackMode).not.toHaveBeenCalled();
+    expect(setActiveModelSpy).not.toHaveBeenCalled();
   });
 
-  it('should return null if the failed model is already the fallback model', async () => {
-    const result = await handleFallback(
-      mockConfig,
-      FALLBACK_MODEL, // Failed model is Flash
-      AUTH_OAUTH,
-    );
+  it('returns null when the failed model already matches the fallback', async () => {
+    const result = await handleFallback(mockConfig, FALLBACK_MODEL, AUTH_OAUTH);
     expect(result).toBeNull();
     expect(mockHandler).not.toHaveBeenCalled();
+    expect(setActiveModelSpy).not.toHaveBeenCalled();
   });
 
-  it('should return null if no fallbackHandler is injected in config', async () => {
+  it('applies fallback and logs when handler resolves to retry', async () => {
+    mockHandler.mockResolvedValue('retry');
+
+    const result = await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH);
+
+    expect(result).toEqual({
+      shouldRetry: true,
+      model: FALLBACK_MODEL,
+      intent: 'retry',
+    });
+    expect(setActiveModelSpy).toHaveBeenCalledWith(FALLBACK_MODEL);
+    expect(logFlashFallback).toHaveBeenCalledTimes(1);
+  });
+
+  it('defaults to retry for silent policies when no handler is provided', async () => {
     const configWithoutHandler = createMockConfig({
       fallbackModelHandler: undefined,
     });
+
+    const silentPolicy = {
+      model: MOCK_PRO_MODEL,
+      onTerminalError: 'prompt' as const,
+      onTransientError: 'silent' as const,
+      onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+      onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN' as const,
+    };
+
+    const fallbackPolicy = {
+      model: FALLBACK_MODEL,
+      onTerminalError: 'prompt' as const,
+      onTransientError: 'prompt' as const,
+      onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE' as const,
+      onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN' as const,
+      isLastResort: true,
+    };
+
+    (configWithoutHandler.getFallbackPolicyContext as Mock).mockReturnValue({
+      failedPolicy: silentPolicy,
+      candidates: [fallbackPolicy],
+    });
+
+    (configWithoutHandler.getModelPolicies as Mock).mockReturnValue([
+      silentPolicy,
+      fallbackPolicy,
+    ]);
+
     const result = await handleFallback(
       configWithoutHandler,
       MOCK_PRO_MODEL,
       AUTH_OAUTH,
+      new RetryableQuotaError('retryable', {} as never, 1),
     );
-    expect(result).toBeNull();
-  });
 
-  describe('when handler returns "retry"', () => {
-    it('should activate fallback mode, log telemetry, and return true', async () => {
-      mockHandler.mockResolvedValue('retry');
-
-      const result = await handleFallback(
-        mockConfig,
-        MOCK_PRO_MODEL,
-        AUTH_OAUTH,
-      );
-
-      expect(result).toBe(true);
-      expect(mockConfig.setFallbackMode).toHaveBeenCalledWith(true);
-      expect(logFlashFallback).toHaveBeenCalled();
+    expect(result).toEqual({
+      shouldRetry: true,
+      model: FALLBACK_MODEL,
+      intent: 'retry',
     });
-  });
-
-  describe('when handler returns "stop"', () => {
-    it('should activate fallback mode, log telemetry, and return false', async () => {
-      mockHandler.mockResolvedValue('stop');
-
-      const result = await handleFallback(
-        mockConfig,
-        MOCK_PRO_MODEL,
-        AUTH_OAUTH,
-      );
-
-      expect(result).toBe(false);
-      expect(mockConfig.setFallbackMode).toHaveBeenCalledWith(true);
-      expect(logFlashFallback).toHaveBeenCalled();
-    });
-  });
-
-  describe('when handler returns "auth"', () => {
-    it('should NOT activate fallback mode and return false', async () => {
-      mockHandler.mockResolvedValue('auth');
-
-      const result = await handleFallback(
-        mockConfig,
-        MOCK_PRO_MODEL,
-        AUTH_OAUTH,
-      );
-
-      expect(result).toBe(false);
-      expect(mockConfig.setFallbackMode).not.toHaveBeenCalled();
-      expect(logFlashFallback).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('when handler returns an unexpected value', () => {
-    it('should log an error and return null', async () => {
-      mockHandler.mockResolvedValue(null);
-
-      const result = await handleFallback(
-        mockConfig,
-        MOCK_PRO_MODEL,
-        AUTH_OAUTH,
-      );
-
-      expect(result).toBeNull();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Fallback UI handler failed:',
-        new Error(
-          'Unexpected fallback intent received from fallbackModelHandler: "null"',
-        ),
-      );
-      expect(mockConfig.setFallbackMode).not.toHaveBeenCalled();
-    });
-  });
-
-  it('should pass the correct context (failedModel, fallbackModel, error) to the handler', async () => {
-    const mockError = new Error('Quota Exceeded');
-    mockHandler.mockResolvedValue('retry');
-
-    await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH, mockError);
-
-    expect(mockHandler).toHaveBeenCalledWith(
-      MOCK_PRO_MODEL,
+    expect(configWithoutHandler.setActiveModel).toHaveBeenCalledWith(
       FALLBACK_MODEL,
-      mockError,
     );
+    expect(logFlashFallback).toHaveBeenCalledTimes(1);
   });
 
-  it('should not call setFallbackMode or log telemetry if already in fallback mode', async () => {
-    // Setup config where fallback mode is already active
-    const activeFallbackConfig = createMockConfig({
+  it('returns false but still applies fallback when handler resolves to stop', async () => {
+    mockHandler.mockResolvedValue('stop');
+
+    const result = await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH);
+
+    expect(result).toEqual({ shouldRetry: false, intent: 'stop' });
+    expect(setActiveModelSpy).not.toHaveBeenCalled();
+    expect(logFlashFallback).not.toHaveBeenCalled();
+  });
+
+  it('marks the failed model as terminal when handler resolves to retry_always', async () => {
+    mockHandler.mockResolvedValue('retry_always');
+
+    const availability = mockConfig.getModelAvailabilityService();
+    const setModelSpy = mockConfig.setModel as Mock;
+
+    const result = await handleFallback(
+      mockConfig,
+      MOCK_PRO_MODEL,
+      AUTH_OAUTH,
+      new RetryableQuotaError('capacity', {} as never, 1),
+    );
+
+    expect(result).toEqual({
+      shouldRetry: true,
+      model: FALLBACK_MODEL,
+      intent: 'retry_always',
+    });
+    expect(setActiveModelSpy).toHaveBeenCalledWith(FALLBACK_MODEL);
+    expect(availability.markTerminal).toHaveBeenCalledWith(
+      MOCK_PRO_MODEL,
+      'capacity',
+    );
+    expect(setModelSpy).toHaveBeenCalledWith(FALLBACK_MODEL);
+  });
+
+  it('retries once without marking terminal when handler resolves to retry_once', async () => {
+    mockHandler.mockResolvedValue('retry_once');
+
+    const availability = mockConfig.getModelAvailabilityService();
+    const setModelSpy = mockConfig.setModel as Mock;
+
+    const result = await handleFallback(
+      mockConfig,
+      MOCK_PRO_MODEL,
+      AUTH_OAUTH,
+      new RetryableQuotaError('capacity', {} as never, 1),
+    );
+
+    expect(result).toEqual({
+      shouldRetry: true,
+      model: FALLBACK_MODEL,
+      intent: 'retry_once',
+      restoreTo: MOCK_PRO_MODEL,
+    });
+    expect(setActiveModelSpy).toHaveBeenCalledWith(FALLBACK_MODEL);
+    expect(availability.markTerminal).not.toHaveBeenCalled();
+    expect(setModelSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not change active model when handler resolves to auth intent', async () => {
+    mockHandler.mockResolvedValue('auth');
+
+    const result = await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH);
+
+    expect(result).toEqual({ shouldRetry: false, intent: 'auth' });
+    expect(setActiveModelSpy).not.toHaveBeenCalled();
+    expect(logFlashFallback).not.toHaveBeenCalled();
+  });
+
+  it('uses last-resort model when availability returns no candidates', async () => {
+    const availabilityWithNone = {
+      markTerminal: vi.fn(),
+      markHealthy: vi.fn(),
+      markUnavailableForTurn: vi.fn(),
+      snapshot: vi.fn().mockReturnValue({ available: false, reason: 'quota' }),
+      selectFirstAvailable: vi.fn().mockReturnValue({
+        selected: null,
+        skipped: [{ model: FALLBACK_MODEL, reason: 'quota' }],
+      }),
+      on: vi.fn(),
+      resetTurn: vi.fn(),
+    } as unknown as ModelAvailabilityService;
+
+    const configWithLastResort = createMockConfig({
       fallbackModelHandler: mockHandler,
-      isInFallbackMode: vi.fn(() => true), // Already active
-      setFallbackMode: vi.fn(),
+      getModelAvailabilityService: vi.fn(() => availabilityWithNone),
     });
 
     mockHandler.mockResolvedValue('retry');
 
     const result = await handleFallback(
-      activeFallbackConfig,
+      configWithLastResort,
       MOCK_PRO_MODEL,
       AUTH_OAUTH,
     );
 
-    // Should still return true to allow the retry (which will use the active fallback mode)
-    expect(result).toBe(true);
-    // Should still consult the handler
-    expect(mockHandler).toHaveBeenCalled();
-    // But should not mutate state or log telemetry again
-    expect(activeFallbackConfig.setFallbackMode).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      shouldRetry: true,
+      model: FALLBACK_MODEL,
+      intent: 'retry',
+    });
+    expect(configWithLastResort.setActiveModel).toHaveBeenCalledWith(
+      FALLBACK_MODEL,
+    );
+  });
+
+  it('skips telemetry when already on the fallback model', async () => {
+    const configAlreadyFallback = createMockConfig({
+      getActiveModel: vi.fn(() => FALLBACK_MODEL),
+      fallbackModelHandler: mockHandler,
+    });
+
+    mockHandler.mockResolvedValue('retry');
+
+    const result = await handleFallback(
+      configAlreadyFallback,
+      MOCK_PRO_MODEL,
+      AUTH_OAUTH,
+    );
+
+    expect(result).toEqual({
+      shouldRetry: true,
+      model: FALLBACK_MODEL,
+      intent: 'retry',
+    });
+    expect(configAlreadyFallback.setActiveModel).toHaveBeenCalledWith(
+      FALLBACK_MODEL,
+    );
     expect(logFlashFallback).not.toHaveBeenCalled();
   });
 
-  it('should catch errors from the handler, log an error, and return null', async () => {
+  it('logs handler failures and still applies fallback', async () => {
     const handlerError = new Error('UI interaction failed');
     mockHandler.mockRejectedValue(handlerError);
 
     const result = await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH);
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ shouldRetry: false, intent: 'stop' });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Fallback UI handler failed:',
       handlerError,
     );
-    expect(mockConfig.setFallbackMode).not.toHaveBeenCalled();
+    expect(setActiveModelSpy).not.toHaveBeenCalled();
   });
 });

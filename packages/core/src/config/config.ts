@@ -50,6 +50,7 @@ import {
   DEFAULT_THINKING_MODE,
 } from './models.js';
 import { shouldAttemptBrowserLaunch } from '../utils/browser.js';
+import { coreEvents } from '../utils/events.js';
 import type { MCPOAuthConfig } from '../mcp/oauth-provider.js';
 import { ideContextStore } from '../ide/ideContext.js';
 import { WriteTodosTool } from '../tools/write-todos.js';
@@ -59,6 +60,15 @@ import { logRipgrepFallback } from '../telemetry/loggers.js';
 import { RipgrepFallbackEvent } from '../telemetry/types.js';
 import type { FallbackModelHandler } from '../fallback/types.js';
 import { ModelRouterService } from '../routing/modelRouterService.js';
+import { ModelAvailabilityService } from '../availability/modelAvailabilityService.js';
+import type {
+  ModelPolicy,
+  ModelPolicyChain,
+} from '../availability/modelPolicy.js';
+import {
+  createDefaultPolicy,
+  getDefaultPolicyChainForTier,
+} from '../availability/policyCatalog.js';
 import { OutputFormat } from '../output/types.js';
 
 // Re-export OAuth config type
@@ -335,6 +345,7 @@ export interface ConfigParameters {
   hooks?: {
     [K in HookEventName]?: HookDefinition[];
   };
+  modelPolicies?: ModelPolicyChain;
 }
 
 export class Config {
@@ -370,6 +381,7 @@ export class Config {
   private geminiClient!: GeminiClient;
   private baseLlmClient!: BaseLlmClient;
   private modelRouterService: ModelRouterService;
+  private modelAvailabilityService: ModelAvailabilityService;
   private readonly fileFiltering: {
     respectGitIgnore: boolean;
     respectGeminiIgnore: boolean;
@@ -383,11 +395,10 @@ export class Config {
   private readonly cwd: string;
   private readonly bugCommand: BugCommandSettings | undefined;
   private model: string;
+  private activeModel: string;
   private readonly noBrowser: boolean;
   private readonly folderTrust: boolean;
   private ideMode: boolean;
-
-  private inFallbackMode = false;
   private readonly maxSessionTurns: number;
   private readonly listExtensions: boolean;
   private readonly _extensionLoader: ExtensionLoader;
@@ -441,6 +452,7 @@ export class Config {
   private readonly hooks:
     | { [K in HookEventName]?: HookDefinition[] }
     | undefined;
+  private readonly customModelPolicies?: ModelPolicyChain;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -497,6 +509,7 @@ export class Config {
     this.fileDiscoveryService = params.fileDiscoveryService ?? null;
     this.bugCommand = params.bugCommand;
     this.model = params.model;
+    this.activeModel = this.resolveActiveModel(this.model);
     this.maxSessionTurns = params.maxSessionTurns ?? -1;
     this.experimentalZedIntegration =
       params.experimentalZedIntegration ?? false;
@@ -536,6 +549,7 @@ export class Config {
     this.useModelRouter = this.initialUseModelRouter;
     this.disableModelRouterForAuth = params.disableModelRouterForAuth ?? [];
     this.enableHooks = params.enableHooks ?? false;
+    this.customModelPolicies = params.modelPolicies;
 
     // Enable MessageBus integration if:
     // 1. Explicitly enabled via setting, OR
@@ -587,6 +601,9 @@ export class Config {
     }
     this.geminiClient = new GeminiClient(this);
     this.modelRouterService = new ModelRouterService(this);
+    this.modelAvailabilityService = new ModelAvailabilityService();
+
+    this.validateConfiguredModelPolicies();
   }
 
   /**
@@ -652,7 +669,14 @@ export class Config {
     this.baseLlmClient = new BaseLlmClient(this.contentGenerator, this);
 
     // Reset the session flag since we're explicitly changing auth and using default model
-    this.inFallbackMode = false;
+    // this.inFallbackMode = false;
+
+    // Ensure the active model aligns with the preferred model after re-auth.
+    this.setActiveModel(this.resolveActiveModel(this.model));
+    debugLogger.log(
+      '[config] refreshAuth completed; active model reset to',
+      this.getActiveModel(),
+    );
   }
 
   getUserTier(): UserTierId | undefined {
@@ -696,20 +720,40 @@ export class Config {
   }
 
   setModel(newModel: string): void {
-    // Do not allow Pro usage if the user is in fallback mode.
-    if (newModel.includes('pro') && this.isInFallbackMode()) {
+    if (this.model === newModel) {
       return;
     }
 
+    const resolved = this.resolveActiveModel(newModel);
     this.model = newModel;
+
+    // If the resolved active model stays the same (e.g. switching from
+    // /model auto → /model pro when we were already routed to pro), we still
+    // need to notify listeners so UI reflects the new preference.
+    if (resolved === this.activeModel) {
+      coreEvents.emitModelChanged(resolved);
+    } else {
+      this.setActiveModel(resolved);
+    }
   }
 
-  isInFallbackMode(): boolean {
-    return this.inFallbackMode;
+  getActiveModel(): string {
+    return this.activeModel;
   }
 
-  setFallbackMode(active: boolean): void {
-    this.inFallbackMode = active;
+  setActiveModel(model: string): void {
+    if (this.activeModel === model) {
+      return;
+    }
+    this.activeModel = model;
+    coreEvents.emitModelChanged(model);
+  }
+
+  private resolveActiveModel(preferredModel: string): string {
+    if (preferredModel === DEFAULT_GEMINI_MODEL_AUTO) {
+      return DEFAULT_GEMINI_MODEL;
+    }
+    return preferredModel;
   }
 
   setFallbackModelHandler(handler: FallbackModelHandler): void {
@@ -893,6 +937,104 @@ export class Config {
 
   getModelRouterService(): ModelRouterService {
     return this.modelRouterService;
+  }
+
+  getModelAvailabilityService(): ModelAvailabilityService {
+    return this.modelAvailabilityService;
+  }
+
+  getModelPolicies(): ModelPolicyChain {
+    if (this.customModelPolicies && this.customModelPolicies.length > 0) {
+      return this.customModelPolicies;
+    }
+    return this.buildDefaultModelPolicies();
+  }
+
+  getModelPolicy(model: string): ModelPolicy | undefined {
+    return this.getModelPolicies().find((policy) => policy.model === model);
+  }
+
+  getFallbackPolicyContext(failedModel: string): {
+    failedPolicy?: ModelPolicy;
+    candidates: ModelPolicyChain;
+  } {
+    debugLogger.log(
+      '[config] compute fallback context for model:',
+      failedModel,
+    );
+    const policies = this.getModelPolicies();
+    const index = policies.findIndex((policy) => policy.model === failedModel);
+    if (index === -1) {
+      debugLogger.log(
+        '[config] model not present in policy chain; returning full chain',
+        policies.map((policy) => policy.model),
+      );
+      return {
+        failedPolicy: undefined,
+        candidates: policies,
+      };
+    }
+
+    debugLogger.log(
+      '[config] identified fallback candidates for model',
+      failedModel,
+      '->',
+      policies.slice(index + 1).map((policy) => policy.model),
+    );
+    return {
+      failedPolicy: policies[index],
+      candidates: policies.slice(index + 1),
+    };
+  }
+
+  getFallbackModelCandidates(failedModel?: string): string[] {
+    const context = failedModel
+      ? this.getFallbackPolicyContext(failedModel)
+      : this.getFallbackPolicyContext(this.getActiveModel());
+    debugLogger.log('[config] fallback model candidates:', context.candidates);
+    return context.candidates.map((policy) => policy.model);
+  }
+
+  private buildDefaultModelPolicies(): ModelPolicyChain {
+    const tier = this.getUserTier();
+    const baseChain = getDefaultPolicyChainForTier(tier);
+    const activeModel = this.getActiveModel();
+
+    debugLogger.log(
+      '[config] building default model policies',
+      'tier:',
+      tier,
+      'activeModel:',
+      activeModel,
+      'baseChain:',
+      baseChain.map((policy) => policy.model),
+    );
+
+    if (!baseChain.some((policy) => policy.model === activeModel)) {
+      debugLogger.log(
+        '[config] active model missing from catalog; prepending scaffold',
+        activeModel,
+      );
+      baseChain.unshift(createDefaultPolicy(activeModel));
+    }
+
+    return baseChain;
+  }
+
+  private validateConfiguredModelPolicies(): void {
+    const policies = this.getModelPolicies();
+    for (const policy of policies) {
+      if (!policy.onTerminalErrorState) {
+        throw new Error(
+          `Model policy "${policy.model}" must define "onTerminalErrorState".`,
+        );
+      }
+      if (!policy.onRetryFailureState) {
+        throw new Error(
+          `Model policy "${policy.model}" must define "onRetryFailureState".`,
+        );
+      }
+    }
   }
 
   getEnableRecursiveFileSearch(): boolean {

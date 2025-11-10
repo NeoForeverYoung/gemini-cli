@@ -6,6 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Mock } from 'vitest';
+import type { ModelPolicy } from '../availability/modelPolicy.js';
 import type {
   ConfigParameters,
   SandboxConfig,
@@ -33,6 +34,12 @@ import { GeminiClient } from '../core/client.js';
 import { GitService } from '../services/gitService.js';
 import { ShellTool } from '../tools/shell.js';
 import { ReadFileTool } from '../tools/read-file.js';
+import {
+  DEFAULT_GEMINI_FLASH_MODEL,
+  DEFAULT_GEMINI_FLASH_LITE_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_GEMINI_MODEL_AUTO,
+} from './models.js';
 import { GrepTool } from '../tools/grep.js';
 import { RipGrepTool, canUseRipgrep } from '../tools/ripGrep.js';
 import { logRipgrepFallback } from '../telemetry/loggers.js';
@@ -77,6 +84,97 @@ vi.mock('../tools/ripGrep.js', () => ({
 vi.mock('../tools/glob');
 vi.mock('../tools/edit');
 vi.mock('../tools/shell');
+
+describe('model policy chain defaults', () => {
+  const baseParams: ConfigParameters = {
+    sessionId: 'policy-test',
+    targetDir: '.',
+    debugMode: false,
+    model: DEFAULT_GEMINI_MODEL,
+    cwd: '.',
+  };
+
+  it('orders paid tier models as Pro ➝ Flash ➝ Flash-Lite', () => {
+    const config = new Config(baseParams);
+    expect(config.getModelPolicies().map((policy) => policy.model)).toEqual([
+      DEFAULT_GEMINI_MODEL,
+      DEFAULT_GEMINI_FLASH_MODEL,
+      DEFAULT_GEMINI_FLASH_LITE_MODEL,
+    ]);
+    expect(config.getFallbackModelCandidates()).toEqual([
+      DEFAULT_GEMINI_FLASH_MODEL,
+      DEFAULT_GEMINI_FLASH_LITE_MODEL,
+    ]);
+  });
+
+  it('resolves auto preference through the policy chain using the active model', () => {
+    const config = new Config({
+      ...baseParams,
+      model: DEFAULT_GEMINI_MODEL_AUTO,
+    });
+    expect(config.getModel()).toBe(DEFAULT_GEMINI_MODEL_AUTO);
+    expect(config.getActiveModel()).toBe(DEFAULT_GEMINI_MODEL);
+    expect(config.getModelPolicies().map((policy) => policy.model)).toEqual([
+      DEFAULT_GEMINI_MODEL,
+      DEFAULT_GEMINI_FLASH_MODEL,
+      DEFAULT_GEMINI_FLASH_LITE_MODEL,
+    ]);
+  });
+
+  it('prepends unknown models ahead of the catalog while preserving defaults', () => {
+    const customModel = 'experimental-prototype';
+    const config = new Config({ ...baseParams, model: customModel });
+    expect(config.getModelPolicies().map((policy) => policy.model)).toEqual([
+      customModel,
+      DEFAULT_GEMINI_MODEL,
+      DEFAULT_GEMINI_FLASH_MODEL,
+      DEFAULT_GEMINI_FLASH_LITE_MODEL,
+    ]);
+    expect(config.getFallbackModelCandidates(customModel)).toEqual([
+      DEFAULT_GEMINI_MODEL,
+      DEFAULT_GEMINI_FLASH_MODEL,
+      DEFAULT_GEMINI_FLASH_LITE_MODEL,
+    ]);
+  });
+
+  it('throws when a custom model policy omits onTerminalErrorState', () => {
+    const invalidPolicy = {
+      model: 'custom-model',
+      onTerminalError: 'prompt',
+      onTransientError: 'prompt',
+      onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN',
+    } as unknown as ModelPolicy;
+
+    expect(
+      () =>
+        new Config({
+          ...baseParams,
+          modelPolicies: [invalidPolicy],
+        }),
+    ).toThrowError(
+      'Model policy "custom-model" must define "onTerminalErrorState".',
+    );
+  });
+
+  it('throws when a custom model policy omits onRetryFailureState', () => {
+    const invalidPolicy = {
+      model: 'custom-model',
+      onTerminalError: 'prompt',
+      onTransientError: 'prompt',
+      onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE',
+    } as unknown as ModelPolicy;
+
+    expect(
+      () =>
+        new Config({
+          ...baseParams,
+          modelPolicies: [invalidPolicy],
+        }),
+    ).toThrowError(
+      'Model policy "custom-model" must define "onRetryFailureState".',
+    );
+  });
+});
 vi.mock('../tools/write-file');
 vi.mock('../tools/web-fetch');
 vi.mock('../tools/read-many-files');
@@ -236,9 +334,9 @@ describe('Server Config (config.ts)', () => {
         mockContentConfig,
       );
 
-      // Set fallback mode to true to ensure it gets reset
-      config.setFallbackMode(true);
-      expect(config.isInFallbackMode()).toBe(true);
+      // Set the active model to a fallback value to ensure it gets reset
+      config.setActiveModel(DEFAULT_GEMINI_FLASH_MODEL);
+      expect(config.getActiveModel()).toBe(DEFAULT_GEMINI_FLASH_MODEL);
 
       await config.refreshAuth(authType);
 
@@ -249,8 +347,8 @@ describe('Server Config (config.ts)', () => {
       // Verify that contentGeneratorConfig is updated
       expect(config.getContentGeneratorConfig()).toEqual(mockContentConfig);
       expect(GeminiClient).toHaveBeenCalledWith(config);
-      // Verify that fallback mode is reset
-      expect(config.isInFallbackMode()).toBe(false);
+      // Verify that the active model is reset to the preferred model
+      expect(config.getActiveModel()).toBe(config.getModel());
     });
 
     it('should strip thoughts when switching from GenAI to Vertex', async () => {

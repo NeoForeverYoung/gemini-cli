@@ -19,10 +19,7 @@ import { toParts } from '../code_assist/converter.js';
 import { createUserContent } from '@google/genai';
 import { retryWithBackoff } from '../utils/retry.js';
 import type { Config } from '../config/config.js';
-import {
-  DEFAULT_GEMINI_FLASH_MODEL,
-  getEffectiveModel,
-} from '../config/models.js';
+import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
 import { hasCycleInSchema } from '../tools/tools.js';
 import type { StructuredError } from './turn.js';
 import type { CompletedToolCall } from './coreToolScheduler.js';
@@ -259,11 +256,14 @@ export class GeminiChat {
     this.history.push(userContent);
     const requestContents = this.getHistory(true);
 
+    this.config.setActiveModel(model);
+
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     return (async function* () {
       try {
         let lastError: unknown = new Error('Request failed after all retries.');
+        let modelToUse = self.config.getActiveModel();
 
         for (
           let attempt = 0;
@@ -271,6 +271,7 @@ export class GeminiChat {
           attempt++
         ) {
           try {
+            modelToUse = self.config.getActiveModel();
             if (attempt > 0) {
               yield { type: StreamEventType.RETRY };
             }
@@ -285,7 +286,7 @@ export class GeminiChat {
             }
 
             const stream = await self.makeApiCallAndProcessStream(
-              model,
+              modelToUse,
               requestContents,
               currentParams,
               prompt_id,
@@ -310,7 +311,7 @@ export class GeminiChat {
                     attempt,
                     (error as InvalidStreamError).type,
                     INVALID_CONTENT_RETRY_OPTIONS.initialDelayMs,
-                    model,
+                    modelToUse,
                   ),
                 );
                 await new Promise((res) =>
@@ -334,7 +335,7 @@ export class GeminiChat {
               new ContentRetryFailureEvent(
                 INVALID_CONTENT_RETRY_OPTIONS.maxAttempts,
                 (lastError as InvalidStreamError).type,
-                model,
+                modelToUse,
               ),
             );
           }
@@ -352,11 +353,19 @@ export class GeminiChat {
     params: SendMessageParameters,
     prompt_id: string,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
+    const availabilityService = this.config.getModelAvailabilityService();
+    availabilityService.resetTurn();
+    const initialModel = this.config.getActiveModel();
+    const availabilityContext = {
+      service: availabilityService,
+      currentModel: initialModel,
+      currentPolicy: this.config.getModelPolicy(initialModel),
+    };
     const apiCall = () => {
-      const modelToUse = getEffectiveModel(
-        this.config.isInFallbackMode(),
-        model,
-      );
+      const modelToUse = this.config.getActiveModel();
+      availabilityContext.currentModel = modelToUse;
+      availabilityContext.currentPolicy =
+        this.config.getModelPolicy(modelToUse);
 
       if (
         this.config.getQuotaErrorOccurred() &&
@@ -380,13 +389,22 @@ export class GeminiChat {
     const onPersistent429Callback = async (
       authType?: string,
       error?: unknown,
-    ) => await handleFallback(this.config, model, authType, error);
+      failedModel?: string,
+    ) =>
+      await handleFallback(
+        this.config,
+        failedModel ?? availabilityContext.currentModel,
+        authType,
+        error,
+      );
 
     const streamResponse = await retryWithBackoff(apiCall, {
       onPersistent429: onPersistent429Callback,
       authType: this.config.getContentGeneratorConfig()?.authType,
       retryFetchErrors: this.config.getRetryFetchErrors(),
       signal: params.config?.abortSignal,
+      availability: availabilityContext,
+      config: this.config,
     });
 
     return this.processStreamResponse(model, streamResponse);

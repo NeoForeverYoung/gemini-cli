@@ -54,7 +54,9 @@ export const DialogManager = ({
     return (
       <ProQuotaDialog
         failedModel={uiState.proQuotaRequest.failedModel}
-        fallbackModel={uiState.proQuotaRequest.fallbackModel}
+        recommendation={uiState.proQuotaRequest.recommendation}
+        title={uiState.proQuotaRequest.title}
+        choices={uiState.proQuotaRequest.choices}
         onChoice={uiActions.handleProQuotaChoice}
       />
     );

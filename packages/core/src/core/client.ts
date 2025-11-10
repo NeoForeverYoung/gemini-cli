@@ -29,11 +29,8 @@ import { tokenLimit } from './tokenLimits.js';
 import type { ChatRecordingService } from '../services/chatRecordingService.js';
 import type { ContentGenerator } from './contentGenerator.js';
 import {
-  DEFAULT_GEMINI_FLASH_MODEL,
-  DEFAULT_GEMINI_MODEL,
   DEFAULT_GEMINI_MODEL_AUTO,
   DEFAULT_THINKING_MODE,
-  getEffectiveModel,
 } from '../config/models.js';
 import { LoopDetectionService } from '../services/loopDetectionService.js';
 import { ChatCompressionService } from '../services/chatCompressionService.js';
@@ -392,12 +389,10 @@ export class GeminiClient {
       return this.currentSequenceModel;
     }
 
-    const configModel = this.config.getModel();
-    const model: string =
-      configModel === DEFAULT_GEMINI_MODEL_AUTO
-        ? DEFAULT_GEMINI_MODEL
-        : configModel;
-    return getEffectiveModel(this.config.isInFallbackMode(), model);
+    if (this.currentSequenceModel) {
+      return this.currentSequenceModel;
+    }
+    return this.config.getActiveModel();
   }
 
   async *sendMessageStream(
@@ -507,6 +502,8 @@ export class GeminiClient {
       this.currentSequenceModel = modelToUse;
     }
 
+    this.config.setActiveModel(modelToUse);
+
     const resultStream = turn.run(modelToUse, request, linkedSignal);
     for await (const event of resultStream) {
       if (this.loopDetector.addAndCheck(event)) {
@@ -610,11 +607,23 @@ export class GeminiClient {
         systemInstruction,
       };
 
+      this.config.setActiveModel(model);
+
+      const availabilityService = this.config.getModelAvailabilityService();
+      availabilityService.resetTurn();
+      const initialModel = this.config.getActiveModel();
+      const availabilityContext = {
+        service: availabilityService,
+        currentModel: initialModel,
+        currentPolicy: this.config.getModelPolicy(initialModel),
+      };
+
       const apiCall = () => {
-        const modelToUse = this.config.isInFallbackMode()
-          ? DEFAULT_GEMINI_FLASH_MODEL
-          : model;
+        const modelToUse = this.config.getActiveModel();
         currentAttemptModel = modelToUse;
+        availabilityContext.currentModel = modelToUse;
+        availabilityContext.currentPolicy =
+          this.config.getModelPolicy(modelToUse);
 
         return this.getContentGeneratorOrFail().generateContent(
           {
@@ -630,11 +639,18 @@ export class GeminiClient {
         error?: unknown,
       ) =>
         // Pass the captured model to the centralized handler.
-        await handleFallback(this.config, currentAttemptModel, authType, error);
+        await handleFallback(
+          this.config,
+          availabilityContext.currentModel,
+          authType,
+          error,
+        );
 
       const result = await retryWithBackoff(apiCall, {
         onPersistent429: onPersistent429Callback,
         authType: this.config.getContentGeneratorConfig()?.authType,
+        availability: availabilityContext,
+        config: this.config,
       });
       return result;
     } catch (error: unknown) {

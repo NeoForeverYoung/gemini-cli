@@ -98,15 +98,33 @@ export class BaseLlmClient {
     };
 
     try {
-      const apiCall = () =>
-        this.contentGenerator.generateContent(
+      this.config.setActiveModel(model);
+
+      const availabilityService = this.config.getModelAvailabilityService();
+      availabilityService.resetTurn();
+      let currentAttemptModel = this.config.getActiveModel();
+      const availabilityContext = {
+        service: availabilityService,
+        currentModel: currentAttemptModel,
+        currentPolicy: this.config.getModelPolicy(currentAttemptModel),
+      };
+
+      const apiCall = () => {
+        const modelToUse = this.config.getActiveModel();
+        currentAttemptModel = modelToUse;
+        availabilityContext.currentModel = modelToUse;
+        availabilityContext.currentPolicy =
+          this.config.getModelPolicy(modelToUse);
+
+        return this.contentGenerator.generateContent(
           {
-            model,
+            model: modelToUse,
             config: requestConfig,
             contents,
           },
           promptId,
         );
+      };
 
       const shouldRetryOnContent = (response: GenerateContentResponse) => {
         const text = getResponseText(response)?.trim();
@@ -114,7 +132,7 @@ export class BaseLlmClient {
           return true; // Retry on empty response
         }
         try {
-          JSON.parse(this.cleanJsonResponse(text, model));
+          JSON.parse(this.cleanJsonResponse(text, currentAttemptModel));
           return false;
         } catch (_e) {
           return true;
@@ -124,11 +142,15 @@ export class BaseLlmClient {
       const result = await retryWithBackoff(apiCall, {
         shouldRetryOnContent,
         maxAttempts: maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
+        availability: availabilityContext,
       });
 
       // If we are here, the content is valid (not empty and parsable).
       return JSON.parse(
-        this.cleanJsonResponse(getResponseText(result)!.trim(), model),
+        this.cleanJsonResponse(
+          getResponseText(result)!.trim(),
+          currentAttemptModel,
+        ),
       );
     } catch (error) {
       if (abortSignal.aborted) {

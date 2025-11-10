@@ -211,12 +211,18 @@ describe('Gemini Client (client.ts)', () => {
       vertexai: false,
       authType: AuthType.USE_GEMINI,
     };
+    let activeModel = 'test-model';
+
     mockConfig = {
       getContentGeneratorConfig: vi
         .fn()
         .mockReturnValue(contentGeneratorConfig),
       getToolRegistry: vi.fn().mockReturnValue(mockToolRegistry),
       getModel: vi.fn().mockReturnValue('test-model'),
+      getActiveModel: vi.fn(() => activeModel),
+      setActiveModel: vi.fn((model: string) => {
+        activeModel = model;
+      }),
       getEmbeddingModel: vi.fn().mockReturnValue('test-embedding-model'),
       getApiKey: vi.fn().mockReturnValue('test-key'),
       getVertexAI: vi.fn().mockReturnValue(false),
@@ -242,8 +248,24 @@ describe('Gemini Client (client.ts)', () => {
       getModelRouterService: vi.fn().mockReturnValue({
         route: vi.fn().mockResolvedValue({ model: 'default-routed-model' }),
       }),
-      isInFallbackMode: vi.fn().mockReturnValue(false),
-      setFallbackMode: vi.fn(),
+      getModelAvailabilityService: vi.fn().mockReturnValue({
+        markTerminal: vi.fn(),
+        markHealthy: vi.fn(),
+        markUnavailableForTurn: vi.fn(),
+        snapshot: vi.fn().mockReturnValue({ available: true }),
+        selectFirstAvailable: vi
+          .fn()
+          .mockReturnValue({ selected: 'test-model', skipped: [] }),
+        on: vi.fn(),
+        resetTurn: vi.fn(),
+      }),
+      getModelPolicy: vi.fn().mockImplementation((requestedModel: string) => ({
+        model: requestedModel,
+        onTerminalError: 'prompt',
+        onTransientError: 'prompt',
+        onTerminalErrorState: 'MARK_PERMANENTLY_UNAVAILABLE',
+        onRetryFailureState: 'MARK_UNAVAILABLE_FOR_TURN',
+      })),
       getChatCompression: vi.fn().mockReturnValue(undefined),
       getSkipNextSpeakerCheck: vi.fn().mockReturnValue(false),
       getUseSmartEdit: vi.fn().mockReturnValue(false),
@@ -1350,68 +1372,6 @@ ${JSON.stringify(
           expect.any(Object),
         );
       });
-
-      it('should use the fallback model and bypass routing when in fallback mode', async () => {
-        vi.mocked(mockConfig.isInFallbackMode).mockReturnValue(true);
-        mockRouterService.route.mockResolvedValue({
-          model: DEFAULT_GEMINI_FLASH_MODEL,
-          reason: 'fallback',
-        });
-
-        const stream = client.sendMessageStream(
-          [{ text: 'Hi' }],
-          new AbortController().signal,
-          'prompt-1',
-        );
-        await fromAsync(stream);
-
-        expect(mockTurnRunFn).toHaveBeenCalledWith(
-          DEFAULT_GEMINI_FLASH_MODEL,
-          [{ text: 'Hi' }],
-          expect.any(Object),
-        );
-      });
-
-      it('should stick to the fallback model for the entire sequence even if fallback mode ends', async () => {
-        // Start the sequence in fallback mode
-        vi.mocked(mockConfig.isInFallbackMode).mockReturnValue(true);
-        mockRouterService.route.mockResolvedValue({
-          model: DEFAULT_GEMINI_FLASH_MODEL,
-          reason: 'fallback',
-        });
-        let stream = client.sendMessageStream(
-          [{ text: 'Hi' }],
-          new AbortController().signal,
-          'prompt-fallback-stickiness',
-        );
-        await fromAsync(stream);
-
-        // First call should use fallback model
-        expect(mockTurnRunFn).toHaveBeenCalledWith(
-          DEFAULT_GEMINI_FLASH_MODEL,
-          [{ text: 'Hi' }],
-          expect.any(Object),
-        );
-
-        // End fallback mode
-        vi.mocked(mockConfig.isInFallbackMode).mockReturnValue(false);
-
-        // Second call in the same sequence
-        stream = client.sendMessageStream(
-          [{ text: 'Continue' }],
-          new AbortController().signal,
-          'prompt-fallback-stickiness',
-        );
-        await fromAsync(stream);
-
-        // Router should still not be called, and it should stick to the fallback model
-        expect(mockTurnRunFn).toHaveBeenCalledTimes(2); // Ensure it was called again
-        expect(mockTurnRunFn).toHaveBeenLastCalledWith(
-          DEFAULT_GEMINI_FLASH_MODEL, // Still the fallback model
-          [{ text: 'Continue' }],
-          expect.any(Object),
-        );
-      });
     });
 
     it('should recursively call sendMessageStream with "Please continue." when InvalidStream event is received', async () => {
@@ -2319,14 +2279,16 @@ ${JSON.stringify(
       );
     });
 
-    it('should use the Flash model when fallback mode is active', async () => {
+    it('should use the Flash model when the active model is Flash', async () => {
       const contents = [{ role: 'user', parts: [{ text: 'hello' }] }];
       const generationConfig = { temperature: 0.5 };
       const abortSignal = new AbortController().signal;
       const requestedModel = 'gemini-2.5-pro'; // A non-flash model
 
-      // Mock config to be in fallback mode
-      vi.spyOn(client['config'], 'isInFallbackMode').mockReturnValue(true);
+      // Mock config to report Flash as the active model
+      vi.spyOn(client['config'], 'getActiveModel').mockReturnValue(
+        DEFAULT_GEMINI_FLASH_MODEL,
+      );
 
       await client.generateContent(
         contents,

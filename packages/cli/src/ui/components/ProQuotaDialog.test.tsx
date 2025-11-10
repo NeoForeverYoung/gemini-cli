@@ -9,6 +9,7 @@ import { act } from 'react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { ProQuotaDialog } from './ProQuotaDialog.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
+import type { ResolvedModelRecommendation } from '../contexts/UIStateContext.js';
 
 // Mock the child component to make it easier to test the parent
 vi.mock('./shared/RadioButtonSelect.js', () => ({
@@ -21,30 +22,46 @@ describe('ProQuotaDialog', () => {
   });
 
   it('should render with correct title and options', () => {
+    const recommendation: ResolvedModelRecommendation = {
+      selected: 'gemini-2.5-flash',
+      skipped: [],
+      action: 'prompt',
+      failureKind: 'terminal',
+    };
     const { lastFrame, unmount } = render(
       <ProQuotaDialog
         failedModel="gemini-2.5-pro"
-        fallbackModel="gemini-2.5-flash"
+        recommendation={recommendation}
+        title="Quota limit reached for gemini-2.5-pro"
+        choices={[
+          { label: 'Try again later', intent: 'stop', key: 'stop' },
+          {
+            label: 'Switch to gemini-2.5-flash for the rest of this session',
+            intent: 'retry_always',
+            key: 'always',
+          },
+        ]}
         onChoice={() => {}}
       />,
     );
 
     const output = lastFrame();
-    expect(output).toContain('Pro quota limit reached for gemini-2.5-pro.');
+    expect(output).toContain('Quota limit reached for gemini-2.5-pro');
+    expect(output).toContain('gemini-2.5-pro → gemini-2.5-flash');
 
     // Check that RadioButtonSelect was called with the correct items
     expect(RadioButtonSelect).toHaveBeenCalledWith(
       expect.objectContaining({
         items: [
           {
-            label: 'Change auth (executes the /auth command)',
-            value: 'auth',
-            key: 'auth',
+            label: 'Try again later',
+            value: 'stop',
+            key: 'stop',
           },
           {
-            label: `Continue with gemini-2.5-flash`,
-            value: 'continue',
-            key: 'continue',
+            label: 'Switch to gemini-2.5-flash for the rest of this session',
+            value: 'retry_always',
+            key: 'always',
           },
         ],
       }),
@@ -53,12 +70,27 @@ describe('ProQuotaDialog', () => {
     unmount();
   });
 
-  it('should call onChoice with "auth" when "Change auth" is selected', () => {
+  it('should call onChoice with the selected intent', () => {
     const mockOnChoice = vi.fn();
+    const recommendation: ResolvedModelRecommendation = {
+      selected: 'gemini-2.5-flash',
+      skipped: [],
+      action: 'prompt',
+      failureKind: 'terminal',
+    };
     const { unmount } = render(
       <ProQuotaDialog
         failedModel="gemini-2.5-pro"
-        fallbackModel="gemini-2.5-flash"
+        recommendation={recommendation}
+        title="Quota limit reached for gemini-2.5-pro"
+        choices={[
+          { label: 'Try again later', intent: 'stop', key: 'stop' },
+          {
+            label: 'Switch to gemini-2.5-flash for the rest of this session',
+            intent: 'retry_always',
+            key: 'always',
+          },
+        ]}
         onChoice={mockOnChoice}
       />,
     );
@@ -68,32 +100,10 @@ describe('ProQuotaDialog', () => {
 
     // Simulate the selection
     act(() => {
-      onSelect('auth');
+      onSelect('retry_always');
     });
 
-    expect(mockOnChoice).toHaveBeenCalledWith('auth');
-    unmount();
-  });
-
-  it('should call onChoice with "continue" when "Continue with flash" is selected', () => {
-    const mockOnChoice = vi.fn();
-    const { unmount } = render(
-      <ProQuotaDialog
-        failedModel="gemini-2.5-pro"
-        fallbackModel="gemini-2.5-flash"
-        onChoice={mockOnChoice}
-      />,
-    );
-
-    // Get the onSelect function passed to RadioButtonSelect
-    const onSelect = (RadioButtonSelect as Mock).mock.calls[0][0].onSelect;
-
-    // Simulate the selection
-    act(() => {
-      onSelect('continue');
-    });
-
-    expect(mockOnChoice).toHaveBeenCalledWith('continue');
+    expect(mockOnChoice).toHaveBeenCalledWith('retry_always');
     unmount();
   });
 });
