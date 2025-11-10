@@ -12,16 +12,14 @@ interface BannerProps {
   color: string[] | string;
 }
 
-export const Banner = ({ bannerText, color }: BannerProps) => {
-  return (
-    <Box flexDirection="column" paddingBottom={1} paddingTop={2}>
-      {Array.isArray(color) ? (
-        <Gradient colors={color}>
-          <Text>{bannerText}</Text>
-        </Gradient>
-      ) : (
-        <Text color={color}>{bannerText}</Text>
-      )}
-    </Box>
-  );
-};
+export const Banner = ({ bannerText, color }: BannerProps) => (
+  <Box flexDirection="column" paddingBottom={1} paddingTop={2}>
+    {Array.isArray(color) ? (
+      <Gradient colors={color}>
+        <Text>{bannerText}</Text>
+      </Gradient>
+    ) : (
+      <Text color={color}>{bannerText}</Text>
+    )}
+  </Box>
+);
