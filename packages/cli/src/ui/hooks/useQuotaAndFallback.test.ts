@@ -25,7 +25,7 @@ import {
 } from '@google/gemini-cli-core';
 import { useQuotaAndFallback } from './useQuotaAndFallback.js';
 import type { UseHistoryManagerReturn } from './useHistoryManager.js';
-import { AuthState, MessageType } from '../types.js';
+import { MessageType } from '../types.js';
 import type { ResolvedModelRecommendation } from '../contexts/UIStateContext.js';
 
 interface TestHandlerContext {
@@ -48,7 +48,6 @@ const recommendationFor = (
 describe('useQuotaAndFallback', () => {
   let mockConfig: Config;
   let mockHistoryManager: UseHistoryManagerReturn;
-  let mockSetAuthState: Mock;
   let mockSetModelSwitchedFromQuotaError: Mock;
   let setFallbackHandlerSpy: ReturnType<typeof vi.spyOn>;
 
@@ -66,7 +65,6 @@ describe('useQuotaAndFallback', () => {
       loadHistory: vi.fn(),
     };
 
-    mockSetAuthState = vi.fn();
     mockSetModelSwitchedFromQuotaError = vi.fn();
     setFallbackHandlerSpy = vi.spyOn(mockConfig, 'setFallbackModelHandler');
     vi.spyOn(mockConfig, 'setQuotaErrorOccurred');
@@ -85,7 +83,6 @@ describe('useQuotaAndFallback', () => {
           config: mockConfig,
           historyManager: mockHistoryManager,
           userTier: props.userTier,
-          setAuthState: mockSetAuthState,
           setModelSwitchedFromQuotaError: mockSetModelSwitchedFromQuotaError,
         }),
       { initialProps: { userTier } },
@@ -260,7 +257,6 @@ describe('useQuotaAndFallback', () => {
 
     const intent = await intentPromise!;
     expect(intent).toBe('retry_always');
-    expect(mockSetAuthState).not.toHaveBeenCalled();
     expect(mockHistoryManager.addItem).toHaveBeenCalledWith(
       expect.objectContaining({
         type: MessageType.INFO,
@@ -268,28 +264,5 @@ describe('useQuotaAndFallback', () => {
       }),
       expect.any(Number),
     );
-  });
-
-  it('handleProQuotaChoice sets auth state when user chooses auth', async () => {
-    const { handler, getState } = renderHookWithConfig(UserTierId.FREE);
-
-    await act(async () => {
-      handler(
-        'gemini-pro',
-        recommendationFor('gemini-flash', {
-          action: 'prompt',
-          failureKind: 'terminal',
-        }),
-        new Error('quota'),
-      );
-    });
-
-    const { handleProQuotaChoice } = getState();
-
-    await act(async () => {
-      handleProQuotaChoice('auth');
-    });
-
-    expect(mockSetAuthState).toHaveBeenCalledWith(AuthState.Updating);
   });
 });

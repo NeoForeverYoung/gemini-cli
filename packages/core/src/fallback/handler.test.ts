@@ -187,6 +187,56 @@ describe('handleFallback', () => {
     expect(configWithoutHandler.setActiveModel).toHaveBeenCalledWith(
       FALLBACK_MODEL,
     );
+  });
+
+  describe('when handler returns "stop"', () => {
+    it('should return false and not apply fallback', async () => {
+      mockHandler.mockResolvedValue('stop');
+
+      const result = await handleFallback(
+        mockConfig,
+        MOCK_PRO_MODEL,
+        AUTH_OAUTH,
+      );
+
+      expect(result).toEqual({ shouldRetry: false, intent: 'stop' });
+      expect(setActiveModelSpy).not.toHaveBeenCalled();
+      expect(logFlashFallback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when handler returns an unexpected value', () => {
+    it('should log an error and return stop intent', async () => {
+      mockHandler.mockResolvedValue(null);
+
+      const result = await handleFallback(
+        mockConfig,
+        MOCK_PRO_MODEL,
+        AUTH_OAUTH,
+      );
+
+      expect(result).toEqual({ shouldRetry: false, intent: 'stop' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Fallback UI handler failed:',
+        new Error(
+          'Unexpected fallback intent received from fallbackModelHandler: "null"',
+        ),
+      );
+      expect(setActiveModelSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  it('should pass the correct context (failedModel, fallbackModel, error) to the handler', async () => {
+    const mockError = new Error('Quota Exceeded');
+    mockHandler.mockResolvedValue('retry');
+
+    await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH, mockError);
+
+    expect(mockHandler).toHaveBeenCalledWith(
+      MOCK_PRO_MODEL,
+      FALLBACK_MODEL,
+      mockError,
+    );
     expect(logFlashFallback).toHaveBeenCalledTimes(1);
   });
 
@@ -248,16 +298,6 @@ describe('handleFallback', () => {
     expect(setActiveModelSpy).toHaveBeenCalledWith(FALLBACK_MODEL);
     expect(availability.markTerminal).not.toHaveBeenCalled();
     expect(setModelSpy).not.toHaveBeenCalled();
-  });
-
-  it('does not change active model when handler resolves to auth intent', async () => {
-    mockHandler.mockResolvedValue('auth');
-
-    const result = await handleFallback(mockConfig, MOCK_PRO_MODEL, AUTH_OAUTH);
-
-    expect(result).toEqual({ shouldRetry: false, intent: 'auth' });
-    expect(setActiveModelSpy).not.toHaveBeenCalled();
-    expect(logFlashFallback).not.toHaveBeenCalled();
   });
 
   it('uses last-resort model when availability returns no candidates', async () => {

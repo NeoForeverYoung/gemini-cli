@@ -11,8 +11,7 @@ export type FallbackIntent =
   | 'retry' // Immediately retry the current request with the fallback model.
   | 'retry_once' // Retry now, but allow the original model to be retried next turn.
   | 'retry_always' // Retry now and stick with the fallback for future turns.
-  | 'stop' // Stop the current request (no immediate retry).
-  | 'auth'; // Stop the current request; user intends to change authentication.
+  | 'stop'; // Stop the current request (no immediate retry).
 
 export interface FallbackHandlerOutcome {
   shouldRetry: boolean;

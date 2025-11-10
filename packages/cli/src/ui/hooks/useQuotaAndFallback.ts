@@ -14,7 +14,7 @@ import {
 } from '@google/gemini-cli-core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type UseHistoryManagerReturn } from './useHistoryManager.js';
-import { AuthState, MessageType } from '../types.js';
+import { MessageType } from '../types.js';
 import {
   type ProQuotaDialogRequest,
   type FallbackDialogOption,
@@ -25,7 +25,6 @@ interface UseQuotaAndFallbackArgs {
   config: Config;
   historyManager: UseHistoryManagerReturn;
   userTier: UserTierId | undefined;
-  setAuthState: (state: AuthState) => void;
   setModelSwitchedFromQuotaError: (value: boolean) => void;
 }
 
@@ -33,7 +32,6 @@ export function useQuotaAndFallback({
   config,
   historyManager,
   userTier,
-  setAuthState,
   setModelSwitchedFromQuotaError,
 }: UseQuotaAndFallbackArgs) {
   const [proQuotaRequest, setProQuotaRequest] =
@@ -140,11 +138,6 @@ export function useQuotaAndFallback({
       setProQuotaRequest(null);
       isDialogPending.current = false; // Reset the flag here
 
-      if (choice === 'auth') {
-        setAuthState(AuthState.Updating);
-        return;
-      }
-
       if (
         choice === 'retry' ||
         choice === 'retry_once' ||
@@ -159,7 +152,7 @@ export function useQuotaAndFallback({
         );
       }
     },
-    [proQuotaRequest, setAuthState, historyManager],
+    [proQuotaRequest, historyManager],
   );
 
   return {

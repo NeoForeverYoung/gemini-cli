@@ -37,7 +37,7 @@ const BASE_POLICY_FLASH: ModelPolicy = {
   onRetryFailureState: 'MARK_PERMANENTLY_UNAVAILABLE',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const BASE_POLICY_FLASH_LITE: ModelPolicy = {
   model: DEFAULT_GEMINI_FLASH_LITE_MODEL,
   onTerminalError: 'prompt',
@@ -47,7 +47,11 @@ const BASE_POLICY_FLASH_LITE: ModelPolicy = {
   isLastResort: true,
 };
 
-const PAID_CHAIN: ModelPolicyChain = [BASE_POLICY_PRO, BASE_POLICY_FLASH];
+const PAID_CHAIN: ModelPolicyChain = [
+  BASE_POLICY_PRO,
+  BASE_POLICY_FLASH,
+  BASE_POLICY_FLASH_LITE,
+];
 
 const FREE_CHAIN: ModelPolicyChain = [BASE_POLICY_PRO, BASE_POLICY_FLASH];
 

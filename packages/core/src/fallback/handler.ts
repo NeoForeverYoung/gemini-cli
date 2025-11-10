@@ -159,9 +159,6 @@ export async function handleFallback(
       });
       return { shouldRetry: false, intent };
     }
-    case 'auth':
-      debugLogger.log('[fallback] handler requested auth intent');
-      return { shouldRetry: false, intent };
     default:
       throw new Error(
         `Unexpected fallback intent received from fallbackModelHandler: "${intent}"`,

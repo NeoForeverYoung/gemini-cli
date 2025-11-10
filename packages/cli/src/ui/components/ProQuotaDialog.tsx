@@ -57,6 +57,9 @@ export function ProQuotaDialog({
           onSelect={onChoice}
         />
       </Box>
+      <Text color={theme.text.primary}>
+        Note: You can always use /model to select a different option.
+      </Text>
     </Box>
   );
 }

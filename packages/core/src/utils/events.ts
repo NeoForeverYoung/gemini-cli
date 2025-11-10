@@ -5,6 +5,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+import type { LoadServerHierarchicalMemoryResponse } from './memoryDiscovery.js';
 
 /**
  * Defines the severity level for user-facing feedback.
@@ -43,12 +44,36 @@ export interface ModelChangedPayload {
   model: string;
 }
 
-export enum CoreEvent {
-  UserFeedback = 'user-feedback',
-  ModelChanged = 'model-changed',
+/**
+ * Payload for the 'fallback-mode-changed' event.
+ */
+export interface FallbackModeChangedPayload {
+  /**
+   * Whether fallback mode is active.
+   */
+  fallbackMode: boolean;
 }
 
-export class CoreEventEmitter extends EventEmitter {
+/**
+ * Payload for the 'memory-changed' event.
+ */
+export type MemoryChangedPayload = LoadServerHierarchicalMemoryResponse;
+
+export enum CoreEvent {
+  UserFeedback = 'user-feedback',
+  FallbackModeChanged = 'fallback-mode-changed',
+  ModelChanged = 'model-changed',
+  MemoryChanged = 'memory-changed',
+}
+
+export interface CoreEvents {
+  [CoreEvent.UserFeedback]: [UserFeedbackPayload];
+  [CoreEvent.FallbackModeChanged]: [FallbackModeChangedPayload];
+  [CoreEvent.ModelChanged]: [ModelChangedPayload];
+  [CoreEvent.MemoryChanged]: [MemoryChangedPayload];
+}
+
+export class CoreEventEmitter extends EventEmitter<CoreEvents> {
   private _feedbackBacklog: UserFeedbackPayload[] = [];
   private static readonly MAX_BACKLOG_SIZE = 10000;
 
@@ -86,6 +111,13 @@ export class CoreEventEmitter extends EventEmitter {
   }
 
   /**
+   * Notifies subscribers that the memory has changed.
+   */
+  emitMemoryChanged(payload: MemoryChangedPayload): void {
+    this.emit(CoreEvent.MemoryChanged, payload);
+  }
+
+  /**
    * Flushes buffered messages. Call this immediately after primary UI listener
    * subscribes.
    */
@@ -106,6 +138,10 @@ export class CoreEventEmitter extends EventEmitter {
     listener: (payload: ModelChangedPayload) => void,
   ): this;
   override on(
+    event: CoreEvent.MemoryChanged,
+    listener: (payload: MemoryChangedPayload) => void,
+  ): this;
+  override on(
     event: string | symbol,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     listener: (...args: any[]) => void,
@@ -122,6 +158,10 @@ export class CoreEventEmitter extends EventEmitter {
     listener: (payload: ModelChangedPayload) => void,
   ): this;
   override off(
+    event: CoreEvent.MemoryChanged,
+    listener: (payload: MemoryChangedPayload) => void,
+  ): this;
+  override off(
     event: string | symbol,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     listener: (...args: any[]) => void,
@@ -136,6 +176,10 @@ export class CoreEventEmitter extends EventEmitter {
   override emit(
     event: CoreEvent.ModelChanged,
     payload: ModelChangedPayload,
+  ): boolean;
+  override emit(
+    event: CoreEvent.MemoryChanged,
+    payload: MemoryChangedPayload,
   ): boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override emit(event: string | symbol, ...args: any[]): boolean {
