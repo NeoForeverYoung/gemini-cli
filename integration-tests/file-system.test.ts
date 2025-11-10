@@ -150,7 +150,7 @@ describe('file-system', () => {
     expect(newFileContent).toBe('1.0.1');
   });
 
-  it.skip('should replace multiple instances of a string', async () => {
+  it('should replace multiple instances of a string', async () => {
     const rig = new TestRig();
     rig.setup('should replace multiple instances of a string');
     const fileName = 'ambiguous.txt';
@@ -162,7 +162,7 @@ describe('file-system', () => {
       `rewrite the file ${fileName} to replace all instances of "test line" with "new line"`,
     );
 
-    const validTools = ['write_file', 'edit'];
+    const validTools = ['write_file', 'replace'];
     const foundToolCall = await rig.waitForAnyToolCall(validTools);
     if (!foundToolCall) {
       printDebugInfo(rig, result, {
@@ -175,31 +175,38 @@ describe('file-system', () => {
       `Expected to find one of ${validTools.join(', ')} tool calls`,
     ).toBeTruthy();
 
-    const toolLogs = rig.readToolLogs();
-    const successfulEdit = toolLogs.some(
-      (log) =>
-        validTools.includes(log.toolRequest.name) && log.toolRequest.success,
-    );
-    if (!successfulEdit) {
-      console.error(
-        `Expected a successful edit tool call (${validTools.join(', ')}), but none was found.`,
-      );
-      printDebugInfo(rig, result);
-    }
-    expect(
-      successfulEdit,
-      `Expected a successful edit tool call (${validTools.join(', ')})`,
-    ).toBeTruthy();
-
     const newFileContent = rig.readFile(fileName);
-    if (newFileContent !== expectedContent) {
+    const originalOccurrences = (fileContent.match(/test line/g) || []).length;
+    const newOccurrences = (newFileContent.match(/new line/g) || []).length;
+    const hasOldString = newFileContent.includes('test line');
+    const hasPreamble = newFileContent.includes('Hey there,');
+
+    if (
+      newFileContent !== expectedContent ||
+      hasOldString ||
+      newOccurrences !== originalOccurrences ||
+      !hasPreamble
+    ) {
       printDebugInfo(rig, result, {
         'Final file content': newFileContent,
         'Expected file content': expectedContent,
+        'Still contains "test line"': hasOldString,
+        'Occurrences of "new line"': newOccurrences,
+        'Expected occurrences': originalOccurrences,
+        'Contains "Hey there,"': hasPreamble,
         'Tool logs': rig.readToolLogs(),
       });
     }
-    expect(newFileContent).toBe(expectedContent);
+
+    expect(
+      hasPreamble,
+      'File should still contain the preamble "Hey there,"',
+    ).toBe(true);
+    expect(hasOldString, 'File should not contain "test line"').toBe(false);
+    expect(
+      newOccurrences,
+      'File should contain correct number of "new line"',
+    ).toBe(originalOccurrences);
   });
 
   it('should fail safely when trying to edit a non-existent file', async () => {
