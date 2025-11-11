@@ -1136,3 +1136,134 @@ describe('ShellExecutionService execution method selection', () => {
     expect(result.executionMethod).toBe('child_process');
   });
 });
+
+describe('Environment Variables', () => {
+  let onOutputEventMock: Mock<(event: ShellOutputEvent) => void>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    onOutputEventMock = vi.fn();
+    mockGetPty.mockResolvedValue({
+      module: { spawn: mockPtySpawn },
+      name: 'mock-pty',
+    });
+  });
+
+  it('should set CI and DEBIAN_FRONTEND when isInteractive is false (child_process)', async () => {
+    const abortController = new AbortController();
+    await ShellExecutionService.execute(
+      'test command',
+      '/test/dir',
+      onOutputEventMock,
+      abortController.signal,
+      false, // shouldUseNodePty
+      {},
+      false, // isInteractive
+    );
+
+    expect(mockCpSpawn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          CI: 'true',
+          DEBIAN_FRONTEND: 'noninteractive',
+        }),
+      }),
+    );
+  });
+
+  it('should NOT set CI and DEBIAN_FRONTEND when isInteractive is true (child_process)', async () => {
+    const originalCI = process.env.CI;
+    const originalDebianFrontend = process.env.DEBIAN_FRONTEND;
+    delete process.env.CI;
+    delete process.env.DEBIAN_FRONTEND;
+
+    try {
+      const abortController = new AbortController();
+      await ShellExecutionService.execute(
+        'test command',
+        '/test/dir',
+        onOutputEventMock,
+        abortController.signal,
+        false, // shouldUseNodePty
+        {},
+        true, // isInteractive
+      );
+
+      expect(mockCpSpawn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.objectContaining({
+          env: expect.not.objectContaining({
+            CI: 'true',
+            DEBIAN_FRONTEND: 'noninteractive',
+          }),
+        }),
+      );
+    } finally {
+      if (originalCI !== undefined) process.env.CI = originalCI;
+      if (originalDebianFrontend !== undefined)
+        process.env.DEBIAN_FRONTEND = originalDebianFrontend;
+    }
+  });
+
+  it('should set CI and DEBIAN_FRONTEND when isInteractive is false (PTY)', async () => {
+    const abortController = new AbortController();
+    await ShellExecutionService.execute(
+      'test command',
+      '/test/dir',
+      onOutputEventMock,
+      abortController.signal,
+      true, // shouldUseNodePty
+      shellExecutionConfig,
+      false, // isInteractive
+    );
+
+    expect(mockPtySpawn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          CI: 'true',
+          DEBIAN_FRONTEND: 'noninteractive',
+        }),
+      }),
+    );
+  });
+
+  it('should NOT set CI and DEBIAN_FRONTEND when isInteractive is true (PTY)', async () => {
+    const originalCI = process.env.CI;
+    const originalDebianFrontend = process.env.DEBIAN_FRONTEND;
+    delete process.env.CI;
+    delete process.env.DEBIAN_FRONTEND;
+
+    try {
+      const abortController = new AbortController();
+      await ShellExecutionService.execute(
+        'test command',
+        '/test/dir',
+        onOutputEventMock,
+        abortController.signal,
+        true, // shouldUseNodePty
+        shellExecutionConfig,
+        true, // isInteractive
+      );
+
+      expect(mockPtySpawn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.objectContaining({
+          env: expect.not.objectContaining({
+            CI: 'true',
+            DEBIAN_FRONTEND: 'noninteractive',
+          }),
+        }),
+      );
+    } finally {
+      if (originalCI !== undefined) process.env.CI = originalCI;
+      if (originalDebianFrontend !== undefined)
+        process.env.DEBIAN_FRONTEND = originalDebianFrontend;
+    }
+  });
+});

@@ -141,6 +141,7 @@ export class ShellExecutionService {
     abortSignal: AbortSignal,
     shouldUseNodePty: boolean,
     shellExecutionConfig: ShellExecutionConfig,
+    isInteractive: boolean = true,
   ): Promise<ShellExecutionHandle> {
     if (shouldUseNodePty) {
       const ptyInfo = await getPty();
@@ -153,6 +154,7 @@ export class ShellExecutionService {
             abortSignal,
             shellExecutionConfig,
             ptyInfo,
+            isInteractive,
           );
         } catch (_e) {
           // Fallback to child_process
@@ -165,6 +167,7 @@ export class ShellExecutionService {
       cwd,
       onOutputEvent,
       abortSignal,
+      isInteractive,
     );
   }
 
@@ -203,6 +206,7 @@ export class ShellExecutionService {
     cwd: string,
     onOutputEvent: (event: ShellOutputEvent) => void,
     abortSignal: AbortSignal,
+    isInteractive: boolean,
   ): ShellExecutionHandle {
     try {
       const isWindows = os.platform() === 'win32';
@@ -221,6 +225,12 @@ export class ShellExecutionService {
           GEMINI_CLI: '1',
           TERM: 'xterm-256color',
           PAGER: 'cat',
+          ...(isInteractive
+            ? {}
+            : {
+                CI: 'true',
+                DEBIAN_FRONTEND: 'noninteractive',
+              }),
         },
       });
 
@@ -412,6 +422,7 @@ export class ShellExecutionService {
     abortSignal: AbortSignal,
     shellExecutionConfig: ShellExecutionConfig,
     ptyInfo: PtyImplementation,
+    isInteractive: boolean,
   ): ShellExecutionHandle {
     if (!ptyInfo) {
       // This should not happen, but as a safeguard...
@@ -434,6 +445,12 @@ export class ShellExecutionService {
           GEMINI_CLI: '1',
           TERM: 'xterm-256color',
           PAGER: shellExecutionConfig.pager ?? 'cat',
+          ...(isInteractive
+            ? {}
+            : {
+                CI: 'true',
+                DEBIAN_FRONTEND: 'noninteractive',
+              }),
         },
         handleFlowControl: true,
       });

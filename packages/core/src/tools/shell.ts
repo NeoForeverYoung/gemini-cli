@@ -214,6 +214,7 @@ export class ShellToolInvocation extends BaseToolInvocation<
           signal,
           this.config.getEnableInteractiveShell(),
           shellExecutionConfig ?? {},
+          this.config.isInteractive(),
         );
 
       if (pid && setPidCallback) {

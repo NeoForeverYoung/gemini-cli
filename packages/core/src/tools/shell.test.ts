@@ -222,6 +222,7 @@ describe('ShellTool', () => {
         mockAbortSignal,
         false,
         {},
+        true,
       );
       expect(result.llmContent).toContain('Background PIDs: 54322');
       // The file should be deleted by the tool
@@ -247,6 +248,7 @@ describe('ShellTool', () => {
         mockAbortSignal,
         false,
         {},
+        true,
       );
     });
 
@@ -268,6 +270,7 @@ describe('ShellTool', () => {
         mockAbortSignal,
         false,
         {},
+        true,
       );
     });
 
@@ -295,6 +298,7 @@ describe('ShellTool', () => {
           mockAbortSignal,
           false,
           {},
+          true,
         );
       },
       20000,
