@@ -35,6 +35,12 @@ export async function loadConfig(
   const workspaceDir = process.cwd();
   const adcFilePath = process.env['GOOGLE_APPLICATION_CREDENTIALS'];
 
+  const interactiveEnv = process.env['CODER_AGENT_INTERACTIVE'];
+  const isInteractiveMode =
+    typeof interactiveEnv === 'string'
+      ? ['1', 'true', 'yes', 'on'].includes(interactiveEnv.toLowerCase())
+      : false;
+
   const configParams: ConfigParameters = {
     sessionId: taskId,
     model: DEFAULT_GEMINI_MODEL,
@@ -53,6 +59,7 @@ export async function loadConfig(
         : ApprovalMode.DEFAULT,
     mcpServers: settings.mcpServers,
     cwd: workspaceDir,
+    interactive: isInteractiveMode,
     telemetry: {
       enabled: settings.telemetry?.enabled,
       target: settings.telemetry?.target as TelemetryTarget,
