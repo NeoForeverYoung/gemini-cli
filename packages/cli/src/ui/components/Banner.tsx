@@ -5,21 +5,21 @@
  */
 
 import { Box, Text } from 'ink';
-import Gradient from 'ink-gradient';
 
 interface BannerProps {
   bannerText: string;
-  color: string[] | string;
+  color: string;
+  width: number;
 }
 
-export const Banner = ({ bannerText, color }: BannerProps) => (
-  <Box flexDirection="column" paddingBottom={1} paddingTop={2}>
-    {Array.isArray(color) ? (
-      <Gradient colors={color}>
-        <Text>{bannerText}</Text>
-      </Gradient>
-    ) : (
-      <Text color={color}>{bannerText}</Text>
-    )}
+export const Banner = ({ bannerText, color, width }: BannerProps) => (
+  <Box
+    flexDirection="column"
+    borderStyle="round"
+    borderColor={color}
+    width={width}
+    paddingLeft={1}
+  >
+    <Text color={color}>{bannerText}</Text>
   </Box>
 );

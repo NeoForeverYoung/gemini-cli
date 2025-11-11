@@ -22,7 +22,7 @@ interface AppHeaderProps {
 export const AppHeader = ({ version }: AppHeaderProps) => {
   const settings = useSettings();
   const config = useConfig();
-  const { nightly } = useUIState();
+  const { nightly, mainAreaWidth } = useUIState();
   const [flags] = useState<Record<string, Flag>>(() => {
     const initial = config.getExperiments();
     return initial?.flags ?? {};
@@ -44,7 +44,13 @@ export const AppHeader = ({ version }: AppHeaderProps) => {
         <Header version={version} nightly={nightly} />
       )}
       {!(settings.merged.ui?.hideBanner || config.getScreenReader()) &&
-        bannerText && <Banner bannerText={bannerText} color={fontColor} />}
+        bannerText && (
+          <Banner
+            width={mainAreaWidth}
+            bannerText={bannerText}
+            color={fontColor}
+          />
+        )}
       {!(settings.merged.ui?.hideTips || config.getScreenReader()) && (
         <Tips config={config} />
       )}
