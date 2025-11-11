@@ -158,7 +158,7 @@ export class ShellToolInvocation extends BaseToolInvocation<
             // wrap command to append subprocess pids (via pgrep) to temporary file
             let command = strippedCommand.trim();
             if (!command.endsWith('&')) command += ';';
-            return `{ ${command} }; __code=$?; pgrep -g 0 >${tempFilePath} 2>&1; exit $__code;`;
+            return `{ ${command} }; __code=$?; if command -v pgrep >/dev/null 2>&1; then pgrep -g 0 >${tempFilePath} 2>&1; fi; exit $__code;`;
           })();
 
       const cwd = this.params.dir_path
