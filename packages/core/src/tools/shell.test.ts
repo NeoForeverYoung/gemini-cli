@@ -221,8 +221,7 @@ describe('ShellTool', () => {
         expect.any(Function),
         mockAbortSignal,
         false,
-        {},
-        true,
+        { isInteractive: true },
       );
       expect(result.llmContent).toContain('Background PIDs: 54322');
       // The file should be deleted by the tool
@@ -247,8 +246,7 @@ describe('ShellTool', () => {
         expect.any(Function),
         mockAbortSignal,
         false,
-        {},
-        true,
+        { isInteractive: true },
       );
     });
 
@@ -269,8 +267,7 @@ describe('ShellTool', () => {
         expect.any(Function),
         mockAbortSignal,
         false,
-        {},
-        true,
+        { isInteractive: true },
       );
     });
 
@@ -297,8 +294,7 @@ describe('ShellTool', () => {
           expect.any(Function),
           mockAbortSignal,
           false,
-          {},
-          true,
+          { isInteractive: true },
         );
       },
       20000,

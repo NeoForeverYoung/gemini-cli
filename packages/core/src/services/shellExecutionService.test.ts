@@ -1157,8 +1157,7 @@ describe('Environment Variables', () => {
       onOutputEventMock,
       abortController.signal,
       false, // shouldUseNodePty
-      {},
-      false, // isInteractive
+      { isInteractive: false },
     );
 
     expect(mockCpSpawn).toHaveBeenCalledWith(
@@ -1187,8 +1186,7 @@ describe('Environment Variables', () => {
         onOutputEventMock,
         abortController.signal,
         false, // shouldUseNodePty
-        {},
-        true, // isInteractive
+        { isInteractive: true },
       );
 
       expect(mockCpSpawn).toHaveBeenCalledWith(
@@ -1216,8 +1214,7 @@ describe('Environment Variables', () => {
       onOutputEventMock,
       abortController.signal,
       true, // shouldUseNodePty
-      shellExecutionConfig,
-      false, // isInteractive
+      { ...shellExecutionConfig, isInteractive: false },
     );
 
     expect(mockPtySpawn).toHaveBeenCalledWith(
@@ -1246,8 +1243,7 @@ describe('Environment Variables', () => {
         onOutputEventMock,
         abortController.signal,
         true, // shouldUseNodePty
-        shellExecutionConfig,
-        true, // isInteractive
+        { ...shellExecutionConfig, isInteractive: true },
       );
 
       expect(mockPtySpawn).toHaveBeenCalledWith(

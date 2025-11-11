@@ -77,6 +77,7 @@ export interface ShellExecutionConfig {
   defaultBg?: string;
   // Used for testing
   disableDynamicLineTrimming?: boolean;
+  isInteractive?: boolean;
 }
 
 /**
@@ -141,7 +142,6 @@ export class ShellExecutionService {
     abortSignal: AbortSignal,
     shouldUseNodePty: boolean,
     shellExecutionConfig: ShellExecutionConfig,
-    isInteractive: boolean = true,
   ): Promise<ShellExecutionHandle> {
     if (shouldUseNodePty) {
       const ptyInfo = await getPty();
@@ -154,7 +154,6 @@ export class ShellExecutionService {
             abortSignal,
             shellExecutionConfig,
             ptyInfo,
-            isInteractive,
           );
         } catch (_e) {
           // Fallback to child_process
@@ -167,8 +166,26 @@ export class ShellExecutionService {
       cwd,
       onOutputEvent,
       abortSignal,
-      isInteractive,
+      shellExecutionConfig,
     );
+  }
+
+  private static getEnv(
+    shellExecutionConfig: ShellExecutionConfig,
+  ): NodeJS.ProcessEnv {
+    const env = {
+      ...process.env,
+      GEMINI_CLI: '1',
+      TERM: 'xterm-256color',
+      PAGER: shellExecutionConfig.pager ?? 'cat',
+    };
+
+    if (shellExecutionConfig.isInteractive === false) {
+      env.CI = 'true';
+      env.DEBIAN_FRONTEND = 'noninteractive';
+    }
+
+    return env;
   }
 
   private static appendAndTruncate(
@@ -206,7 +223,7 @@ export class ShellExecutionService {
     cwd: string,
     onOutputEvent: (event: ShellOutputEvent) => void,
     abortSignal: AbortSignal,
-    isInteractive: boolean,
+    shellExecutionConfig: ShellExecutionConfig,
   ): ShellExecutionHandle {
     try {
       const isWindows = os.platform() === 'win32';
@@ -220,18 +237,7 @@ export class ShellExecutionService {
         windowsVerbatimArguments: isWindows ? false : undefined,
         shell: false,
         detached: !isWindows,
-        env: {
-          ...process.env,
-          GEMINI_CLI: '1',
-          TERM: 'xterm-256color',
-          PAGER: 'cat',
-          ...(isInteractive
-            ? {}
-            : {
-                CI: 'true',
-                DEBIAN_FRONTEND: 'noninteractive',
-              }),
-        },
+        env: this.getEnv(shellExecutionConfig),
       });
 
       const result = new Promise<ShellExecutionResult>((resolve) => {
@@ -422,7 +428,6 @@ export class ShellExecutionService {
     abortSignal: AbortSignal,
     shellExecutionConfig: ShellExecutionConfig,
     ptyInfo: PtyImplementation,
-    isInteractive: boolean,
   ): ShellExecutionHandle {
     if (!ptyInfo) {
       // This should not happen, but as a safeguard...
@@ -440,18 +445,7 @@ export class ShellExecutionService {
         name: 'xterm',
         cols,
         rows,
-        env: {
-          ...process.env,
-          GEMINI_CLI: '1',
-          TERM: 'xterm-256color',
-          PAGER: shellExecutionConfig.pager ?? 'cat',
-          ...(isInteractive
-            ? {}
-            : {
-                CI: 'true',
-                DEBIAN_FRONTEND: 'noninteractive',
-              }),
-        },
+        env: this.getEnv(shellExecutionConfig),
         handleFlowControl: true,
       });
 
