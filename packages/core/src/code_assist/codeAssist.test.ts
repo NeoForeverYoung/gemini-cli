@@ -68,18 +68,18 @@ describe('codeAssist', () => {
       expect(generator).toBeInstanceOf(MockedCodeAssistServer);
     });
 
-    it('should create a server for COMPUTE_ADC', async () => {
+    it('should create a server for CLOUD_SHELL', async () => {
       mockedGetOauthClient.mockResolvedValue(mockAuthClient as never);
       mockedSetupUser.mockResolvedValue(mockUserData);
 
       const generator = await createCodeAssistContentGenerator(
         httpOptions,
-        AuthType.COMPUTE_ADC,
+        AuthType.CLOUD_SHELL,
         mockConfig,
       );
 
       expect(getOauthClient).toHaveBeenCalledWith(
-        AuthType.COMPUTE_ADC,
+        AuthType.CLOUD_SHELL,
         mockConfig,
       );
       expect(setupUser).toHaveBeenCalledWith(mockAuthClient);
