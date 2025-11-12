@@ -5,55 +5,51 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import fs from 'node:fs/promises';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { StandardFileSystemService } from './fileSystemService.js';
-
-vi.mock('fs/promises');
 
 describe('StandardFileSystemService', () => {
   let fileSystem: StandardFileSystemService;
+  let tempDir: string;
 
   beforeEach(() => {
     vi.resetAllMocks();
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fileSystemService-test-'));
     fileSystem = new StandardFileSystemService();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  describe('readTextFile', () => {
+  describe('readTextFile', async () => {
     it('should read file content using fs', async () => {
       const testContent = 'Hello, World!';
-      vi.mocked(fs.readFile).mockResolvedValue(testContent);
+      const testFile = path.join(tempDir, 'file.txt');
+      fs.writeFileSync(testFile, testContent);
 
-      const result = await fileSystem.readTextFile('/test/file.txt');
+      const result = await fileSystem.readTextFile(testFile);
 
-      expect(fs.readFile).toHaveBeenCalledWith('/test/file.txt', 'utf-8');
       expect(result).toBe(testContent);
     });
 
     it('should propagate fs.readFile errors', async () => {
-      const error = new Error('ENOENT: File not found');
-      vi.mocked(fs.readFile).mockRejectedValue(error);
-
-      await expect(fileSystem.readTextFile('/test/file.txt')).rejects.toThrow(
-        'ENOENT: File not found',
-      );
+      await expect(
+        fileSystem.readTextFile('/test/non-existent-file.txt'),
+      ).rejects.toThrow('ENOENT: no such file or directory');
     });
   });
 
   describe('writeTextFile', () => {
     it('should write file content using fs', async () => {
-      vi.mocked(fs.writeFile).mockResolvedValue();
+      const testFile = path.join(tempDir, 'file.txt');
+      await fileSystem.writeTextFile(testFile, 'Hello, World!');
 
-      await fileSystem.writeTextFile('/test/file.txt', 'Hello, World!');
-
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        '/test/file.txt',
-        'Hello, World!',
-        'utf-8',
-      );
+      const content = fs.readFileSync(testFile, 'utf-8');
+      expect(content).toBe('Hello, World!');
     });
   });
 });
