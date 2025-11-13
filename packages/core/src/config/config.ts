@@ -301,6 +301,7 @@ export interface ConfigParameters {
   disableYoloMode?: boolean;
   modelConfigServiceConfig?: ModelConfigServiceConfig;
   enableHooks?: boolean;
+  enableDynamicSystemPrompt?: boolean;
   experiments?: Experiments;
   hooks?: {
     [K in HookEventName]?: HookDefinition[];
@@ -412,6 +413,7 @@ export class Config {
   readonly recordResponses?: string;
   private readonly disableYoloMode: boolean;
   private readonly enableHooks: boolean;
+  private readonly enableDynamicSystemPrompt: boolean;
   private readonly hooks:
     | { [K in HookEventName]?: HookDefinition[] }
     | undefined;
@@ -517,6 +519,7 @@ export class Config {
     this.useModelRouter = this.initialUseModelRouter;
     this.disableModelRouterForAuth = params.disableModelRouterForAuth ?? [];
     this.enableHooks = params.enableHooks ?? false;
+    this.enableDynamicSystemPrompt = params.enableDynamicSystemPrompt ?? true;
 
     // Enable MessageBus integration if:
     // 1. Explicitly enabled via setting, OR
@@ -1291,6 +1294,10 @@ export class Config {
 
   getEnableHooks(): boolean {
     return this.enableHooks;
+  }
+
+  getEnableDynamicSystemPrompt(): boolean {
+    return this.enableDynamicSystemPrompt;
   }
 
   getCodebaseInvestigatorSettings(): CodebaseInvestigatorSettings {

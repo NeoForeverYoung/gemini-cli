@@ -31,6 +31,7 @@ import type {
   ResumedSessionData,
 } from '../services/chatRecordingService.js';
 import type { ContentGenerator } from './contentGenerator.js';
+import { SystemPromptGenerator } from './system-prompt-generator.js';
 import {
   DEFAULT_GEMINI_FLASH_MODEL,
   DEFAULT_GEMINI_MODEL,
@@ -80,6 +81,7 @@ export class GeminiClient {
 
   private readonly loopDetector: LoopDetectionService;
   private readonly compressionService: ChatCompressionService;
+  private readonly systemPromptGenerator: SystemPromptGenerator;
   private lastPromptId: string;
   private currentSequenceModel: string | null = null;
   private lastSentIdeContext: IdeContext | undefined;
@@ -94,6 +96,7 @@ export class GeminiClient {
   constructor(private readonly config: Config) {
     this.loopDetector = new LoopDetectionService(config);
     this.compressionService = new ChatCompressionService();
+    this.systemPromptGenerator = new SystemPromptGenerator(config);
     this.lastPromptId = this.config.getSessionId();
   }
 
@@ -190,6 +193,7 @@ export class GeminiClient {
   async startChat(
     extraHistory?: Content[],
     resumedSessionData?: ResumedSessionData,
+    systemInstructionOverride?: string,
   ): Promise<GeminiChat> {
     this.forceFullIdeContext = true;
     this.hasFailedCompressionAttempt = false;
@@ -202,7 +206,9 @@ export class GeminiClient {
 
     try {
       const userMemory = this.config.getUserMemory();
-      const systemInstruction = getCoreSystemPrompt(this.config, userMemory);
+      const systemInstruction =
+        systemInstructionOverride ??
+        getCoreSystemPrompt(this.config, userMemory);
       const model = this.config.getModel();
 
       const config: GenerateContentConfig = { ...this.generateContentConfig };
@@ -403,6 +409,22 @@ export class GeminiClient {
     }
   }
 
+  private getUserTextFromRequest(request: PartListUnion): string {
+    if (typeof request === 'string') {
+      return request;
+    }
+    if (Array.isArray(request)) {
+      return request
+        .map((p) => {
+          if (typeof p === 'string') return p;
+          return p.text || '';
+        })
+        .join('\n')
+        .trim();
+    }
+    return '';
+  }
+
   private _getEffectiveModelForCurrentTurn(): string {
     if (this.currentSequenceModel) {
       return this.currentSequenceModel;
@@ -423,10 +445,42 @@ export class GeminiClient {
     turns: number = MAX_TURNS,
     isInvalidStreamRetry: boolean = false,
   ): AsyncGenerator<ServerGeminiStreamEvent, Turn> {
+    debugLogger.log(
+      `[sendMessageStream] Called with prompt_id=${prompt_id}, lastPromptId=${this.lastPromptId}`,
+    );
     if (this.lastPromptId !== prompt_id) {
       this.loopDetector.reset(prompt_id);
       this.lastPromptId = prompt_id;
       this.currentSequenceModel = null;
+
+      const userText = this.getUserTextFromRequest(request);
+      debugLogger.log(`[sendMessageStream] User text extracted: "${userText}"`);
+      if (userText) {
+        debugLogger.log(
+          `[sendMessageStream] Generating dynamic system prompt...`,
+        );
+        try {
+          const dynamicPrompt =
+            await this.systemPromptGenerator.generate(userText);
+          debugLogger.log(
+            `[sendMessageStream] Dynamic prompt generated (length=${dynamicPrompt.length}). Re-initializing chat.`,
+          );
+          const currentHistory = this.getChat().getHistory();
+          const historyToKeep =
+            currentHistory.length > 0 ? currentHistory.slice(1) : [];
+          this.chat = await this.startChat(
+            historyToKeep,
+            undefined,
+            dynamicPrompt,
+          );
+          this.updateTelemetryTokenCount();
+        } catch (err) {
+          debugLogger.error(
+            `[sendMessageStream] Failed to generate/apply dynamic prompt:`,
+            err,
+          );
+        }
+      }
     }
     this.sessionTurnCount++;
     if (

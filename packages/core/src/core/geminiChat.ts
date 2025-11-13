@@ -529,9 +529,7 @@ export class GeminiChat {
             hasToolCall = true;
           }
 
-          modelResponseParts.push(
-            ...content.parts.filter((part) => !part.thought),
-          );
+          modelResponseParts.push(...content.parts);
         }
       }
 
