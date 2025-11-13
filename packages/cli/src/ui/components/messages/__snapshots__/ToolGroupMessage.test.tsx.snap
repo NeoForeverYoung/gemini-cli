@@ -111,19 +111,6 @@ exports[`<ToolGroupMessage /> > Golden Snapshots > renders single successful too
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;
 
-exports[`<ToolGroupMessage /> > Golden Snapshots > renders sticky header when scrolled 1`] = `
-"│                                                                              │
-│ ✓  tool-2 Description 2                                                      │
-│    Description 2                                                             │
-│    Description 2                                                             │
-│    Description 2                                                             │                                       ▄
-│    Description 2                                                             │                                       █
-│                                                                              │                                       █
-│                                                                              │                                       █
-│ Test result                                                                  │                                       █
-╰──────────────────────────────────────────────────────────────────────────────╯                                       █"
-`;
-
 exports[`<ToolGroupMessage /> > Golden Snapshots > renders tool call awaiting confirmation 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │ ?  confirmation-tool This tool needs confirmation                          ← │
