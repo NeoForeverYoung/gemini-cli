@@ -7,29 +7,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import {
-  SESSION_FILE_PREFIX,
-  type Config,
-  debugLogger,
-} from '@google/gemini-cli-core';
+import { SESSION_FILE_PREFIX, type Config } from '@google/gemini-cli-core';
+import * as os from 'node:os';
 import type { Settings } from '../config/settings.js';
 import { cleanupExpiredSessions } from './sessionCleanup.js';
 import { type SessionInfo, getAllSessionFiles } from './sessionUtils.js';
 
-// Mock the fs module
-vi.mock('fs/promises');
 vi.mock('./sessionUtils.js', () => ({
   getAllSessionFiles: vi.fn(),
 }));
 
-const mockFs = vi.mocked(fs);
 const mockGetAllSessionFiles = vi.mocked(getAllSessionFiles);
+
+let tempDir: string;
 
 // Create mock config
 function createMockConfig(overrides: Partial<Config> = {}): Config {
   return {
     storage: {
-      getProjectTempDir: vi.fn().mockReturnValue('/tmp/test-project'),
+      getProjectTempDir: vi.fn().mockReturnValue(tempDir),
     },
     getSessionId: vi.fn().mockReturnValue('current123'),
     getDebugMode: vi.fn().mockReturnValue(false),
@@ -39,7 +35,7 @@ function createMockConfig(overrides: Partial<Config> = {}): Config {
 }
 
 // Create test session data
-function createTestSessions(): SessionInfo[] {
+function getTestSessionsData(): SessionInfo[] {
   const now = new Date();
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -98,19 +94,32 @@ function createTestSessions(): SessionInfo[] {
 }
 
 describe('Session Cleanup', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // By default, return all test sessions as valid
-    const sessions = createTestSessions();
+  async function createAndMockSessions(sessions: SessionInfo[]) {
+    // Create the files on disk
+    for (const session of sessions) {
+      const filePath = path.join(tempDir, 'chats', session.fileName);
+      await fs.writeFile(filePath, JSON.stringify({ sessionId: session.id }));
+    }
+
+    // Mock the session discovery
     mockGetAllSessionFiles.mockResolvedValue(
       sessions.map((session) => ({
         fileName: session.fileName,
         sessionInfo: session,
       })),
     );
+  }
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'session-cleanup-test-'));
+    await fs.mkdir(path.join(tempDir, 'chats'), { recursive: true });
+    vi.clearAllMocks();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    if (tempDir) {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
     vi.restoreAllMocks();
   });
 
@@ -171,6 +180,7 @@ describe('Session Cleanup', () => {
     });
 
     it('should delete sessions older than maxAge', async () => {
+      await createAndMockSessions(getTestSessionsData());
       const config = createMockConfig();
       const settings: Settings = {
         general: {
@@ -181,18 +191,6 @@ describe('Session Cleanup', () => {
         },
       };
 
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
-
       const result = await cleanupExpiredSessions(config, settings);
 
       expect(result.disabled).toBe(false);
@@ -200,9 +198,16 @@ describe('Session Cleanup', () => {
       expect(result.deleted).toBe(2); // Should delete the 2-week-old and 1-month-old sessions
       expect(result.skipped).toBe(2); // Current session + recent session should be skipped
       expect(result.failed).toBe(0);
+
+      // Verify files were actually deleted
+      const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+      expect(remainingFiles).toHaveLength(2);
+      expect(remainingFiles).toContain(getTestSessionsData()[0].fileName); // current
+      expect(remainingFiles).toContain(getTestSessionsData()[1].fileName); // recent
     });
 
     it('should never delete current session', async () => {
+      await createAndMockSessions(getTestSessionsData());
       const config = createMockConfig();
       const settings: Settings = {
         general: {
@@ -213,18 +218,6 @@ describe('Session Cleanup', () => {
         },
       };
 
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
-
       const result = await cleanupExpiredSessions(config, settings);
 
       // Should delete all sessions except the current one
@@ -232,18 +225,13 @@ describe('Session Cleanup', () => {
       expect(result.deleted).toBe(3);
 
       // Verify that unlink was never called with the current session file
-      const unlinkCalls = mockFs.unlink.mock.calls;
-      const currentSessionPath = path.join(
-        '/tmp/test-project',
-        'chats',
-        `${SESSION_FILE_PREFIX}2025-01-20T10-30-00-current12.json`,
-      );
-      expect(
-        unlinkCalls.find((call) => call[0] === currentSessionPath),
-      ).toBeUndefined();
+      const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+      expect(remainingFiles).toHaveLength(1);
+      expect(remainingFiles[0]).toBe(getTestSessionsData()[0].fileName);
     });
 
     it('should handle count-based retention', async () => {
+      await createAndMockSessions(getTestSessionsData());
       const config = createMockConfig();
       const settings: Settings = {
         general: {
@@ -254,27 +242,26 @@ describe('Session Cleanup', () => {
         },
       };
 
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
-
       const result = await cleanupExpiredSessions(config, settings);
 
       expect(result.disabled).toBe(false);
       expect(result.scanned).toBe(4);
       expect(result.deleted).toBe(2); // Should delete 2 oldest sessions (after skipping the current one)
       expect(result.skipped).toBe(2); // Current session + 1 recent session should be kept
+
+      // Verify files were actually deleted
+      const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+      expect(remainingFiles).toHaveLength(2);
+      expect(remainingFiles.sort()).toEqual(
+        [
+          getTestSessionsData()[0].fileName,
+          getTestSessionsData()[1].fileName,
+        ].sort(),
+      );
     });
 
     it('should handle file system errors gracefully', async () => {
+      await createAndMockSessions(getTestSessionsData());
       const config = createMockConfig();
       const settings: Settings = {
         general: {
@@ -285,24 +272,19 @@ describe('Session Cleanup', () => {
         },
       };
 
-      // Mock file operations to succeed for access and readFile but fail for unlink
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockRejectedValue(new Error('Permission denied'));
+      // Make the chats directory unwritable to simulate permission denied
+      const chatsDirPath = path.join(tempDir, 'chats');
+      await fs.chmod(chatsDirPath, 0o444); // Read-only directory
 
       const result = await cleanupExpiredSessions(config, settings);
 
       expect(result.disabled).toBe(false);
       expect(result.scanned).toBe(4);
-      expect(result.deleted).toBe(0);
-      expect(result.failed).toBeGreaterThan(0);
+      expect(result.deleted).toBe(0); // No files should be deleted due to permission error
+      expect(result.failed).toBe(3); // 3 deletable sessions should fail
+
+      // Restore permissions for cleanup
+      await fs.chmod(chatsDirPath, 0o755);
     });
 
     it('should handle empty sessions directory', async () => {
@@ -377,6 +359,7 @@ describe('Session Cleanup', () => {
     });
 
     it('should log debug information when enabled', async () => {
+      await createAndMockSessions(getTestSessionsData());
       const config = createMockConfig({
         getDebugMode: vi.fn().mockReturnValue(true),
       });
@@ -389,21 +372,7 @@ describe('Session Cleanup', () => {
         },
       };
 
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
-
-      const debugSpy = vi
-        .spyOn(debugLogger, 'debug')
-        .mockImplementation(() => {});
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
       await cleanupExpiredSessions(config, settings);
 
@@ -487,24 +456,7 @@ describe('Session Cleanup', () => {
         },
       ];
 
-      mockGetAllSessionFiles.mockResolvedValue(
-        testSessions.map((session) => ({
-          fileName: session.fileName,
-          sessionInfo: session,
-        })),
-      );
-
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
+      await createAndMockSessions(testSessions);
 
       const result = await cleanupExpiredSessions(config, settings);
 
@@ -515,28 +467,10 @@ describe('Session Cleanup', () => {
       expect(result.skipped).toBe(2); // Current + 5d session
 
       // Verify which files were deleted
-      const unlinkCalls = mockFs.unlink.mock.calls.map((call) => call[0]);
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}8d.json`,
-        ),
-      );
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}15d.json`,
-        ),
-      );
-      expect(unlinkCalls).not.toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}5d.json`,
-        ),
-      );
+      const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+      expect(remainingFiles).toHaveLength(2);
+      expect(remainingFiles).toContain(`${SESSION_FILE_PREFIX}current.json`);
+      expect(remainingFiles).toContain(`${SESSION_FILE_PREFIX}5d.json`);
     });
 
     it('should NOT delete sessions within the cutoff date', async () => {
@@ -609,24 +543,7 @@ describe('Session Cleanup', () => {
         },
       ];
 
-      mockGetAllSessionFiles.mockResolvedValue(
-        testSessions.map((session) => ({
-          fileName: session.fileName,
-          sessionInfo: session,
-        })),
-      );
-
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
+      await createAndMockSessions(testSessions);
 
       const result = await cleanupExpiredSessions(config, settings);
 
@@ -638,7 +555,8 @@ describe('Session Cleanup', () => {
       expect(result.failed).toBe(0);
 
       // Verify no files were deleted
-      expect(mockFs.unlink).not.toHaveBeenCalled();
+      const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+      expect(remainingFiles).toHaveLength(4);
     });
 
     it('should keep N most recent deletable sessions', async () => {
@@ -686,24 +604,7 @@ describe('Session Cleanup', () => {
         });
       }
 
-      mockGetAllSessionFiles.mockResolvedValue(
-        sessions.map((session) => ({
-          fileName: session.fileName,
-          sessionInfo: session,
-        })),
-      );
-
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
+      await createAndMockSessions(sessions);
 
       const result = await cleanupExpiredSessions(config, settings);
 
@@ -714,50 +615,14 @@ describe('Session Cleanup', () => {
       expect(result.skipped).toBe(3);
 
       // Verify which files were deleted (should be the 3 oldest)
-      const unlinkCalls = mockFs.unlink.mock.calls.map((call) => call[0]);
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}3d.json`,
-        ),
-      );
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}4d.json`,
-        ),
-      );
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}5d.json`,
-        ),
-      );
-
-      // Verify which files were NOT deleted
-      expect(unlinkCalls).not.toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
+      const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+      expect(remainingFiles).toHaveLength(3);
+      expect(remainingFiles.sort()).toEqual(
+        [
           `${SESSION_FILE_PREFIX}current.json`,
-        ),
-      );
-      expect(unlinkCalls).not.toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
           `${SESSION_FILE_PREFIX}1d.json`,
-        ),
-      );
-      expect(unlinkCalls).not.toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
           `${SESSION_FILE_PREFIX}2d.json`,
-        ),
+        ].sort(),
       );
     });
 
@@ -843,24 +708,7 @@ describe('Session Cleanup', () => {
         },
       ];
 
-      mockGetAllSessionFiles.mockResolvedValue(
-        testSessions.map((session) => ({
-          fileName: session.fileName,
-          sessionInfo: session,
-        })),
-      );
-
-      // Mock successful file operations
-      mockFs.access.mockResolvedValue(undefined);
-      mockFs.readFile.mockResolvedValue(
-        JSON.stringify({
-          sessionId: 'test',
-          messages: [],
-          startTime: '2025-01-01T00:00:00Z',
-          lastUpdated: '2025-01-01T00:00:00Z',
-        }),
-      );
-      mockFs.unlink.mockResolvedValue(undefined);
+      await createAndMockSessions(testSessions);
 
       const result = await cleanupExpiredSessions(config, settings);
 
@@ -873,483 +721,66 @@ describe('Session Cleanup', () => {
       expect(result.skipped).toBe(2); // Current + 3d session
 
       // Verify which files were deleted
-      const unlinkCalls = mockFs.unlink.mock.calls.map((call) => call[0]);
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}5d.json`,
-        ),
-      );
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}7d.json`,
-        ),
-      );
-      expect(unlinkCalls).toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
-          `${SESSION_FILE_PREFIX}12d.json`,
-        ),
-      );
-
-      // Verify which files were NOT deleted
-      expect(unlinkCalls).not.toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
+      const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+      expect(remainingFiles).toHaveLength(2);
+      expect(remainingFiles.sort()).toEqual(
+        [
           `${SESSION_FILE_PREFIX}current.json`,
-        ),
-      );
-      expect(unlinkCalls).not.toContain(
-        path.join(
-          '/tmp/test-project',
-          'chats',
           `${SESSION_FILE_PREFIX}3d.json`,
-        ),
+        ].sort(),
       );
     });
-  });
 
-  describe('parseRetentionPeriod format validation', () => {
-    // Test all supported formats
-    it.each([
-      ['1h', 60 * 60 * 1000],
-      ['24h', 24 * 60 * 60 * 1000],
-      ['168h', 168 * 60 * 60 * 1000],
-      ['1d', 24 * 60 * 60 * 1000],
-      ['7d', 7 * 24 * 60 * 60 * 1000],
-      ['30d', 30 * 24 * 60 * 60 * 1000],
-      ['365d', 365 * 24 * 60 * 60 * 1000],
-      ['1w', 7 * 24 * 60 * 60 * 1000],
-      ['2w', 14 * 24 * 60 * 60 * 1000],
-      ['4w', 28 * 24 * 60 * 60 * 1000],
-      ['52w', 364 * 24 * 60 * 60 * 1000],
-      ['1m', 30 * 24 * 60 * 60 * 1000],
-      ['3m', 90 * 24 * 60 * 60 * 1000],
-      ['6m', 180 * 24 * 60 * 60 * 1000],
-      ['12m', 360 * 24 * 60 * 60 * 1000],
-    ])('should correctly parse valid format %s', async (input) => {
-      const config = createMockConfig();
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: input,
-            // Set minRetention to 1h to allow testing of hour-based maxAge values
-            minRetention: '1h',
-          },
-        },
-      };
-
-      mockGetAllSessionFiles.mockResolvedValue([]);
-
-      // If it parses correctly, cleanup should proceed without error
-      const result = await cleanupExpiredSessions(config, settings);
-      expect(result.disabled).toBe(false);
-      expect(result.failed).toBe(0);
-    });
-
-    // Test invalid formats
-    it.each([
-      '30', // Missing unit
-      '30x', // Invalid unit
-      'd', // No number
-      '1.5d', // Decimal not supported
-      '-5d', // Negative number
-      '1 d', // Space in format
-      '1dd', // Double unit
-      'abc', // Non-numeric
-      '30s', // Unsupported unit (seconds)
-      '30y', // Unsupported unit (years)
-      '0d', // Zero value (technically valid regex but semantically invalid)
-    ])('should reject invalid format %s', async (input) => {
-      const config = createMockConfig({
-        getDebugMode: vi.fn().mockReturnValue(true),
-      });
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: input,
-          },
-        },
-      };
-
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const result = await cleanupExpiredSessions(config, settings);
-
-      expect(result.disabled).toBe(true);
-      expect(result.scanned).toBe(0);
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          input === '0d'
-            ? 'Invalid retention period: 0d. Value must be greater than 0'
-            : `Invalid retention period format: ${input}`,
-        ),
-      );
-
-      errorSpy.mockRestore();
-    });
-
-    // Test special case - empty string
-    it('should reject empty string', async () => {
-      const config = createMockConfig({
-        getDebugMode: vi.fn().mockReturnValue(true),
-      });
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: '',
-          },
-        },
-      };
-
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const result = await cleanupExpiredSessions(config, settings);
-
-      expect(result.disabled).toBe(true);
-      expect(result.scanned).toBe(0);
-      // Empty string means no valid retention method specified
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Either maxAge or maxCount must be specified'),
-      );
-
-      errorSpy.mockRestore();
-    });
-
-    // Test edge cases
-    it('should handle very large numbers', async () => {
-      const config = createMockConfig();
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: '9999d', // Very large number
-          },
-        },
-      };
-
-      mockGetAllSessionFiles.mockResolvedValue([]);
-
-      const result = await cleanupExpiredSessions(config, settings);
-      expect(result.disabled).toBe(false);
-      expect(result.failed).toBe(0);
-    });
-
-    it('should validate minRetention format', async () => {
-      const config = createMockConfig({
-        getDebugMode: vi.fn().mockReturnValue(true),
-      });
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: '5d',
-            minRetention: 'invalid-format', // Invalid minRetention
-          },
-        },
-      };
-
-      mockGetAllSessionFiles.mockResolvedValue([]);
-
-      // Should fall back to default minRetention and proceed
-      const result = await cleanupExpiredSessions(config, settings);
-
-      // Since maxAge (5d) > default minRetention (1d), this should succeed
-      expect(result.disabled).toBe(false);
-      expect(result.failed).toBe(0);
-    });
-  });
-
-  describe('Configuration validation', () => {
-    it('should require either maxAge or maxCount', async () => {
-      const config = createMockConfig({
-        getDebugMode: vi.fn().mockReturnValue(true),
-      });
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            // Neither maxAge nor maxCount specified
-          },
-        },
-      };
-
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const result = await cleanupExpiredSessions(config, settings);
-
-      expect(result.disabled).toBe(true);
-      expect(result.scanned).toBe(0);
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Either maxAge or maxCount must be specified'),
-      );
-
-      errorSpy.mockRestore();
-    });
-
-    it('should validate maxCount range', async () => {
-      const config = createMockConfig({
-        getDebugMode: vi.fn().mockReturnValue(true),
-      });
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxCount: 0, // Invalid count
-          },
-        },
-      };
-
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const result = await cleanupExpiredSessions(config, settings);
-
-      expect(result.disabled).toBe(true);
-      expect(result.scanned).toBe(0);
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('maxCount must be at least 1'),
-      );
-
-      errorSpy.mockRestore();
-    });
-
-    describe('maxAge format validation', () => {
-      it('should reject invalid maxAge format - no unit', async () => {
-        const config = createMockConfig({
-          getDebugMode: vi.fn().mockReturnValue(true),
-        });
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '30', // Missing unit
-            },
-          },
-        };
-
-        const errorSpy = vi
-          .spyOn(console, 'error')
-          .mockImplementation(() => {});
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        expect(result.disabled).toBe(true);
-        expect(result.scanned).toBe(0);
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid retention period format: 30'),
-        );
-
-        errorSpy.mockRestore();
-      });
-
-      it('should reject invalid maxAge format - invalid unit', async () => {
-        const config = createMockConfig({
-          getDebugMode: vi.fn().mockReturnValue(true),
-        });
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '30x', // Invalid unit 'x'
-            },
-          },
-        };
-
-        const errorSpy = vi
-          .spyOn(console, 'error')
-          .mockImplementation(() => {});
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        expect(result.disabled).toBe(true);
-        expect(result.scanned).toBe(0);
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid retention period format: 30x'),
-        );
-
-        errorSpy.mockRestore();
-      });
-
-      it('should reject invalid maxAge format - no number', async () => {
-        const config = createMockConfig({
-          getDebugMode: vi.fn().mockReturnValue(true),
-        });
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: 'd', // No number
-            },
-          },
-        };
-
-        const errorSpy = vi
-          .spyOn(console, 'error')
-          .mockImplementation(() => {});
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        expect(result.disabled).toBe(true);
-        expect(result.scanned).toBe(0);
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid retention period format: d'),
-        );
-
-        errorSpy.mockRestore();
-      });
-
-      it('should reject invalid maxAge format - decimal number', async () => {
-        const config = createMockConfig({
-          getDebugMode: vi.fn().mockReturnValue(true),
-        });
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '1.5d', // Decimal not supported
-            },
-          },
-        };
-
-        const errorSpy = vi
-          .spyOn(console, 'error')
-          .mockImplementation(() => {});
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        expect(result.disabled).toBe(true);
-        expect(result.scanned).toBe(0);
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid retention period format: 1.5d'),
-        );
-
-        errorSpy.mockRestore();
-      });
-
-      it('should reject invalid maxAge format - negative number', async () => {
-        const config = createMockConfig({
-          getDebugMode: vi.fn().mockReturnValue(true),
-        });
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '-5d', // Negative not allowed
-            },
-          },
-        };
-
-        const errorSpy = vi
-          .spyOn(console, 'error')
-          .mockImplementation(() => {});
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        expect(result.disabled).toBe(true);
-        expect(result.scanned).toBe(0);
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid retention period format: -5d'),
-        );
-
-        errorSpy.mockRestore();
-      });
-
-      it('should accept valid maxAge format - hours', async () => {
+    describe('parseRetentionPeriod format validation', () => {
+      // Test all supported formats
+      it.each([
+        ['1h', 60 * 60 * 1000],
+        ['24h', 24 * 60 * 60 * 1000],
+        ['168h', 168 * 60 * 60 * 1000],
+        ['1d', 24 * 60 * 60 * 1000],
+        ['7d', 7 * 24 * 60 * 60 * 1000],
+        ['30d', 30 * 24 * 60 * 60 * 1000],
+        ['365d', 365 * 24 * 60 * 60 * 1000],
+        ['1w', 7 * 24 * 60 * 60 * 1000],
+        ['2w', 14 * 24 * 60 * 60 * 1000],
+        ['4w', 28 * 24 * 60 * 60 * 1000],
+        ['52w', 364 * 24 * 60 * 60 * 1000],
+        ['1m', 30 * 24 * 60 * 60 * 1000],
+        ['3m', 90 * 24 * 60 * 60 * 1000],
+        ['6m', 180 * 24 * 60 * 60 * 1000],
+        ['12m', 360 * 24 * 60 * 60 * 1000],
+      ])('should correctly parse valid format %s', async (input) => {
         const config = createMockConfig();
         const settings: Settings = {
           general: {
             sessionRetention: {
               enabled: true,
-              maxAge: '48h', // Valid: 48 hours
-              maxCount: 10, // Need at least one valid retention method
+              maxAge: input,
+              // Set minRetention to 1h to allow testing of hour-based maxAge values
+              minRetention: '1h',
             },
           },
         };
-
         mockGetAllSessionFiles.mockResolvedValue([]);
-
+        // If it parses correctly, cleanup should proceed without error
         const result = await cleanupExpiredSessions(config, settings);
-
-        // Should not reject the configuration
         expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
         expect(result.failed).toBe(0);
       });
-
-      it('should accept valid maxAge format - days', async () => {
-        const config = createMockConfig();
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '7d', // Valid: 7 days
-            },
-          },
-        };
-
-        mockGetAllSessionFiles.mockResolvedValue([]);
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        // Should not reject the configuration
-        expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
-      });
-
-      it('should accept valid maxAge format - weeks', async () => {
-        const config = createMockConfig();
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '2w', // Valid: 2 weeks
-            },
-          },
-        };
-
-        mockGetAllSessionFiles.mockResolvedValue([]);
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        // Should not reject the configuration
-        expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
-      });
-
-      it('should accept valid maxAge format - months', async () => {
-        const config = createMockConfig();
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '3m', // Valid: 3 months
-            },
-          },
-        };
-
-        mockGetAllSessionFiles.mockResolvedValue([]);
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        // Should not reject the configuration
-        expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
-      });
-    });
-
-    describe('minRetention validation', () => {
-      it('should reject maxAge less than default minRetention (1d)', async () => {
+      // Test invalid formats
+      it.each([
+        '30', // Missing unit
+        '30x', // Invalid unit
+        'd', // No number
+        '1.5d', // Decimal not supported
+        '-5d', // Negative number
+        '1 d', // Space in format
+        '1dd', // Double unit
+        'abc', // Non-numeric
+        '30s', // Unsupported unit (seconds)
+        '30y', // Unsupported unit (years)
+        '0d', // Zero value (technically valid regex but semantically invalid)
+      ])('should reject invalid format %s', async (input) => {
         const config = createMockConfig({
           getDebugMode: vi.fn().mockReturnValue(true),
         });
@@ -1357,29 +788,27 @@ describe('Session Cleanup', () => {
           general: {
             sessionRetention: {
               enabled: true,
-              maxAge: '12h', // Less than default 1d minRetention
+              maxAge: input,
             },
           },
         };
-
         const errorSpy = vi
           .spyOn(console, 'error')
           .mockImplementation(() => {});
-
         const result = await cleanupExpiredSessions(config, settings);
-
         expect(result.disabled).toBe(true);
         expect(result.scanned).toBe(0);
         expect(errorSpy).toHaveBeenCalledWith(
           expect.stringContaining(
-            'maxAge cannot be less than minRetention (1d)',
+            input === '0d'
+              ? 'Invalid retention period: 0d. Value must be greater than 0'
+              : `Invalid retention period format: ${input}`,
           ),
         );
-
         errorSpy.mockRestore();
       });
-
-      it('should reject maxAge less than custom minRetention', async () => {
+      // Test special case - empty string
+      it('should reject empty string', async () => {
         const config = createMockConfig({
           getDebugMode: vi.fn().mockReturnValue(true),
         });
@@ -1387,74 +816,41 @@ describe('Session Cleanup', () => {
           general: {
             sessionRetention: {
               enabled: true,
-              maxAge: '2d',
-              minRetention: '3d', // maxAge < minRetention
+              maxAge: '',
             },
           },
         };
-
         const errorSpy = vi
           .spyOn(console, 'error')
           .mockImplementation(() => {});
-
         const result = await cleanupExpiredSessions(config, settings);
-
         expect(result.disabled).toBe(true);
         expect(result.scanned).toBe(0);
+        // Empty string means no valid retention method specified
         expect(errorSpy).toHaveBeenCalledWith(
           expect.stringContaining(
-            'maxAge cannot be less than minRetention (3d)',
+            'Either maxAge or maxCount must be specified',
           ),
         );
-
         errorSpy.mockRestore();
       });
-
-      it('should accept maxAge equal to minRetention', async () => {
+      // Test edge cases
+      it('should handle very large numbers', async () => {
         const config = createMockConfig();
         const settings: Settings = {
           general: {
             sessionRetention: {
               enabled: true,
-              maxAge: '2d',
-              minRetention: '2d', // maxAge == minRetention (edge case)
+              maxAge: '9999d', // Very large number
             },
           },
         };
-
         mockGetAllSessionFiles.mockResolvedValue([]);
-
         const result = await cleanupExpiredSessions(config, settings);
-
-        // Should not reject the configuration
         expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
         expect(result.failed).toBe(0);
       });
-
-      it('should accept maxAge greater than minRetention', async () => {
-        const config = createMockConfig();
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: '7d',
-              minRetention: '2d', // maxAge > minRetention
-            },
-          },
-        };
-
-        mockGetAllSessionFiles.mockResolvedValue([]);
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        // Should not reject the configuration
-        expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
-      });
-
-      it('should handle invalid minRetention format gracefully', async () => {
+      it('should validate minRetention format', async () => {
         const config = createMockConfig({
           getDebugMode: vi.fn().mockReturnValue(true),
         });
@@ -1463,68 +859,21 @@ describe('Session Cleanup', () => {
             sessionRetention: {
               enabled: true,
               maxAge: '5d',
-              minRetention: 'invalid', // Invalid format
+              minRetention: 'invalid-format', // Invalid minRetention
             },
           },
         };
-
         mockGetAllSessionFiles.mockResolvedValue([]);
-
-        // When minRetention is invalid, it should default to 1d
-        // Since maxAge (5d) > default minRetention (1d), this should be valid
+        // Should fall back to default minRetention and proceed
         const result = await cleanupExpiredSessions(config, settings);
-
-        // Should not reject due to minRetention (falls back to default)
+        // Since maxAge (5d) > default minRetention (1d), this should succeed
         expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
         expect(result.failed).toBe(0);
       });
     });
 
-    describe('maxCount boundary validation', () => {
-      it('should accept maxCount = 1 (minimum valid)', async () => {
-        const config = createMockConfig();
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxCount: 1, // Minimum valid value
-            },
-          },
-        };
-
-        mockGetAllSessionFiles.mockResolvedValue([]);
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        // Should accept the configuration
-        expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
-      });
-
-      it('should accept maxCount = 1000 (maximum valid)', async () => {
-        const config = createMockConfig();
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxCount: 1000, // Maximum valid value
-            },
-          },
-        };
-
-        mockGetAllSessionFiles.mockResolvedValue([]);
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        // Should accept the configuration
-        expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
-      });
-
-      it('should reject negative maxCount', async () => {
+    describe('Configuration validation', () => {
+      it('should require either maxAge or maxCount', async () => {
         const config = createMockConfig({
           getDebugMode: vi.fn().mockReturnValue(true),
         });
@@ -1532,220 +881,602 @@ describe('Session Cleanup', () => {
           general: {
             sessionRetention: {
               enabled: true,
-              maxCount: -1, // Negative value
+              // Neither maxAge nor maxCount specified
             },
           },
         };
-
         const errorSpy = vi
           .spyOn(console, 'error')
           .mockImplementation(() => {});
-
         const result = await cleanupExpiredSessions(config, settings);
-
+        expect(result.disabled).toBe(true);
+        expect(result.scanned).toBe(0);
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'Either maxAge or maxCount must be specified',
+          ),
+        );
+        errorSpy.mockRestore();
+      });
+      it('should validate maxCount range', async () => {
+        const config = createMockConfig({
+          getDebugMode: vi.fn().mockReturnValue(true),
+        });
+        const settings: Settings = {
+          general: {
+            sessionRetention: {
+              enabled: true,
+              maxCount: 0, // Invalid count
+            },
+          },
+        };
+        const errorSpy = vi
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+        const result = await cleanupExpiredSessions(config, settings);
         expect(result.disabled).toBe(true);
         expect(result.scanned).toBe(0);
         expect(errorSpy).toHaveBeenCalledWith(
           expect.stringContaining('maxCount must be at least 1'),
         );
-
         errorSpy.mockRestore();
       });
+      describe('maxAge format validation', () => {
+        it('should reject invalid maxAge format - no unit', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '30', // Missing unit
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid retention period format: 30'),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should reject invalid maxAge format - invalid unit', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '30x', // Invalid unit 'x'
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid retention period format: 30x'),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should reject invalid maxAge format - no number', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: 'd', // No number
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid retention period format: d'),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should reject invalid maxAge format - decimal number', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '1.5d', // Decimal not supported
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid retention period format: 1.5d'),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should reject invalid maxAge format - negative number', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '-5d', // Negative not allowed
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid retention period format: -5d'),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should accept valid maxAge format - hours', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '48h', // Valid: 48 hours
+                maxCount: 10, // Need at least one valid retention method
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should not reject the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should accept valid maxAge format - days', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '7d', // Valid: 7 days
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should not reject the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should accept valid maxAge format - weeks', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '2w', // Valid: 2 weeks
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should not reject the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should accept valid maxAge format - months', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '3m', // Valid: 3 months
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should not reject the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+      });
+      describe('minRetention validation', () => {
+        it('should reject maxAge less than default minRetention (1d)', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '12h', // Less than default 1d minRetention
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining(
+              'maxAge cannot be less than minRetention (1d)',
+            ),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should reject maxAge less than custom minRetention', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '2d',
+                minRetention: '3d', // maxAge < minRetention
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining(
+              'maxAge cannot be less than minRetention (3d)',
+            ),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should accept maxAge equal to minRetention', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '2d',
+                minRetention: '2d', // maxAge == minRetention (edge case)
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should not reject the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should accept maxAge greater than minRetention', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '7d',
+                minRetention: '2d', // maxAge > minRetention
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should not reject the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should handle invalid minRetention format gracefully', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '5d',
+                minRetention: 'invalid', // Invalid format
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          // When minRetention is invalid, it should default to 1d
+          // Since maxAge (5d) > default minRetention (1d), this should be valid
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should not reject due to minRetention (falls back to default)
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+      });
+      describe('maxCount boundary validation', () => {
+        it('should accept maxCount = 1 (minimum valid)', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxCount: 1, // Minimum valid value
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should accept the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should accept maxCount = 1000 (maximum valid)', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxCount: 1000, // Maximum valid value
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should accept the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should reject negative maxCount', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxCount: -1, // Negative value
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('maxCount must be at least 1'),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should accept valid maxCount in normal range', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxCount: 50, // Normal valid value
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should accept the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+      });
+      describe('combined configuration validation', () => {
+        it('should accept valid maxAge and maxCount together', async () => {
+          const config = createMockConfig();
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: '30d',
+                maxCount: 10,
+              },
+            },
+          };
+          mockGetAllSessionFiles.mockResolvedValue([]);
+          const result = await cleanupExpiredSessions(config, settings);
+          // Should accept the configuration
+          expect(result.disabled).toBe(false);
+          expect(result.scanned).toBe(0);
+          expect(result.failed).toBe(0);
+        });
+        it('should reject if both maxAge and maxCount are invalid', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: 'invalid',
+                maxCount: 0,
+              },
+            },
+          };
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+          const result = await cleanupExpiredSessions(config, settings);
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          // Should fail on first validation error (maxAge format)
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid retention period format'),
+          );
+          errorSpy.mockRestore();
+        });
+        it('should reject if maxAge is invalid even when maxCount is valid', async () => {
+          const config = createMockConfig({
+            getDebugMode: vi.fn().mockReturnValue(true),
+          });
+          const settings: Settings = {
+            general: {
+              sessionRetention: {
+                enabled: true,
+                maxAge: 'invalid', // Invalid format
+                maxCount: 5, // Valid count
+              },
+            },
+          };
 
-      it('should accept valid maxCount in normal range', async () => {
+          // The validation logic rejects invalid maxAge format even if maxCount is valid
+          const errorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+
+          const result = await cleanupExpiredSessions(config, settings);
+
+          // Should reject due to invalid maxAge format
+          expect(result.disabled).toBe(true);
+          expect(result.scanned).toBe(0);
+          expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid retention period format'),
+          );
+
+          errorSpy.mockRestore();
+        });
+      });
+
+      it('should never throw an exception, always returning a result', async () => {
         const config = createMockConfig();
         const settings: Settings = {
           general: {
             sessionRetention: {
               enabled: true,
-              maxCount: 50, // Normal valid value
+              maxAge: '7d',
             },
           },
         };
 
-        mockGetAllSessionFiles.mockResolvedValue([]);
+        // Mock getSessionFiles to throw an error
+        mockGetAllSessionFiles.mockRejectedValue(
+          new Error('Failed to read directory'),
+        );
 
+        // Should not throw, should return a result with errors
         const result = await cleanupExpiredSessions(config, settings);
 
-        // Should accept the configuration
+        expect(result).toBeDefined();
         expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
+        expect(result.failed).toBe(1);
       });
-    });
 
-    describe('combined configuration validation', () => {
-      it('should accept valid maxAge and maxCount together', async () => {
+      it('should delete corrupted session files', async () => {
         const config = createMockConfig();
         const settings: Settings = {
           general: {
             sessionRetention: {
               enabled: true,
               maxAge: '30d',
-              maxCount: 10,
             },
           },
         };
-
-        mockGetAllSessionFiles.mockResolvedValue([]);
+        // Mock getAllSessionFiles to return both valid and corrupted files
+        const validSession = getTestSessionsData()[0];
+        const validSessionFilePath = path.join(
+          tempDir,
+          'chats',
+          validSession.fileName,
+        );
+        await fs.writeFile(
+          validSessionFilePath,
+          JSON.stringify({ sessionId: validSession.id }),
+        );
+        await fs.writeFile(
+          path.join(
+            tempDir,
+            'chats',
+            `${SESSION_FILE_PREFIX}2025-01-02T10-00-00-corrupt1.json`,
+          ),
+          'invalid json',
+        );
+        await fs.writeFile(
+          path.join(
+            tempDir,
+            'chats',
+            `${SESSION_FILE_PREFIX}2025-01-03T10-00-00-corrupt2.json`,
+          ),
+          'invalid json',
+        );
+        mockGetAllSessionFiles.mockResolvedValue([
+          { fileName: validSession.fileName, sessionInfo: validSession },
+          {
+            fileName: `${SESSION_FILE_PREFIX}2025-01-02T10-00-00-corrupt1.json`,
+            sessionInfo: null,
+          },
+          {
+            fileName: `${SESSION_FILE_PREFIX}2025-01-03T10-00-00-corrupt2.json`,
+            sessionInfo: null,
+          },
+        ]);
 
         const result = await cleanupExpiredSessions(config, settings);
 
-        // Should accept the configuration
         expect(result.disabled).toBe(false);
-        expect(result.scanned).toBe(0);
-        expect(result.failed).toBe(0);
+        expect(result.scanned).toBe(3); // 1 valid + 2 corrupted
+        expect(result.deleted).toBe(2); // Should delete the 2 corrupted files
+        expect(result.skipped).toBe(1); // The valid session is kept
+
+        // Verify corrupted files were deleted
+        const remainingFiles = await fs.readdir(path.join(tempDir, 'chats'));
+        expect(remainingFiles).toHaveLength(1);
+        expect(remainingFiles[0]).toBe(validSession.fileName);
       });
 
-      it('should reject if both maxAge and maxCount are invalid', async () => {
-        const config = createMockConfig({
-          getDebugMode: vi.fn().mockReturnValue(true),
-        });
+      it('should handle unexpected errors without throwing', async () => {
+        const config = createMockConfig();
         const settings: Settings = {
           general: {
             sessionRetention: {
               enabled: true,
-              maxAge: 'invalid',
-              maxCount: 0,
+              maxAge: '7d',
             },
           },
         };
 
-        const errorSpy = vi
-          .spyOn(console, 'error')
-          .mockImplementation(() => {});
+        // Mock getSessionFiles to throw a non-Error object
+        mockGetAllSessionFiles.mockRejectedValue('String error');
 
+        // Should not throw, should return a result with errors
         const result = await cleanupExpiredSessions(config, settings);
 
-        expect(result.disabled).toBe(true);
-        expect(result.scanned).toBe(0);
-        // Should fail on first validation error (maxAge format)
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid retention period format'),
-        );
-
-        errorSpy.mockRestore();
+        expect(result).toBeDefined();
+        expect(result.disabled).toBe(false);
+        expect(result.failed).toBe(1);
       });
-
-      it('should reject if maxAge is invalid even when maxCount is valid', async () => {
-        const config = createMockConfig({
-          getDebugMode: vi.fn().mockReturnValue(true),
-        });
-        const settings: Settings = {
-          general: {
-            sessionRetention: {
-              enabled: true,
-              maxAge: 'invalid', // Invalid format
-              maxCount: 5, // Valid count
-            },
-          },
-        };
-
-        // The validation logic rejects invalid maxAge format even if maxCount is valid
-        const errorSpy = vi
-          .spyOn(console, 'error')
-          .mockImplementation(() => {});
-
-        const result = await cleanupExpiredSessions(config, settings);
-
-        // Should reject due to invalid maxAge format
-        expect(result.disabled).toBe(true);
-        expect(result.scanned).toBe(0);
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid retention period format'),
-        );
-
-        errorSpy.mockRestore();
-      });
-    });
-
-    it('should never throw an exception, always returning a result', async () => {
-      const config = createMockConfig();
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: '7d',
-          },
-        },
-      };
-
-      // Mock getSessionFiles to throw an error
-      mockGetAllSessionFiles.mockRejectedValue(
-        new Error('Failed to read directory'),
-      );
-
-      // Should not throw, should return a result with errors
-      const result = await cleanupExpiredSessions(config, settings);
-
-      expect(result).toBeDefined();
-      expect(result.disabled).toBe(false);
-      expect(result.failed).toBe(1);
-    });
-
-    it('should delete corrupted session files', async () => {
-      const config = createMockConfig();
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: '30d',
-          },
-        },
-      };
-
-      // Mock getAllSessionFiles to return both valid and corrupted files
-      const validSession = createTestSessions()[0];
-      mockGetAllSessionFiles.mockResolvedValue([
-        { fileName: validSession.fileName, sessionInfo: validSession },
-        {
-          fileName: `${SESSION_FILE_PREFIX}2025-01-02T10-00-00-corrupt1.json`,
-          sessionInfo: null,
-        },
-        {
-          fileName: `${SESSION_FILE_PREFIX}2025-01-03T10-00-00-corrupt2.json`,
-          sessionInfo: null,
-        },
-      ]);
-
-      mockFs.unlink.mockResolvedValue(undefined);
-
-      const result = await cleanupExpiredSessions(config, settings);
-
-      expect(result.disabled).toBe(false);
-      expect(result.scanned).toBe(3); // 1 valid + 2 corrupted
-      expect(result.deleted).toBe(2); // Should delete the 2 corrupted files
-      expect(result.skipped).toBe(1); // The valid session is kept
-
-      // Verify corrupted files were deleted
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        expect.stringContaining('corrupt1.json'),
-      );
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        expect.stringContaining('corrupt2.json'),
-      );
-    });
-
-    it('should handle unexpected errors without throwing', async () => {
-      const config = createMockConfig();
-      const settings: Settings = {
-        general: {
-          sessionRetention: {
-            enabled: true,
-            maxAge: '7d',
-          },
-        },
-      };
-
-      // Mock getSessionFiles to throw a non-Error object
-      mockGetAllSessionFiles.mockRejectedValue('String error');
-
-      // Should not throw, should return a result with errors
-      const result = await cleanupExpiredSessions(config, settings);
-
-      expect(result).toBeDefined();
-      expect(result.disabled).toBe(false);
-      expect(result.failed).toBe(1);
     });
   });
 });
