@@ -424,7 +424,7 @@ describe('usePermissionsModifyTrust', () => {
     const emitFeedbackSpy = vi.spyOn(coreEvents, 'emitFeedback');
 
     const { result } = renderHook(() =>
-      usePermissionsModifyTrust(mockOnExit, mockAddItem),
+      usePermissionsModifyTrust(mockOnExit, mockAddItem, mockedCwd()),
     );
 
     act(() => {
@@ -454,7 +454,7 @@ describe('usePermissionsModifyTrust', () => {
     const emitFeedbackSpy = vi.spyOn(coreEvents, 'emitFeedback');
 
     const { result } = renderHook(() =>
-      usePermissionsModifyTrust(mockOnExit, mockAddItem),
+      usePermissionsModifyTrust(mockOnExit, mockAddItem, mockedCwd()),
     );
 
     act(() => {
