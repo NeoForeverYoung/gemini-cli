@@ -1749,6 +1749,7 @@ describe('CoreToolScheduler Sequential Execution', () => {
     // Arrange
     const abortController = new AbortController();
     let secondCallStarted = false;
+    const ASYNC_WORK_DELAY_MS = 100;
 
     const executeFn = vi
       .fn()
@@ -1758,8 +1759,9 @@ describe('CoreToolScheduler Sequential Execution', () => {
         }
         if (args.call === 2) {
           secondCallStarted = true;
-          // Simulate async work that can be cancelled
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await new Promise<void>((resolve) =>
+            setTimeout(resolve, ASYNC_WORK_DELAY_MS),
+          );
           return { llmContent: 'Second call should not complete' };
         }
         if (args.call === 3) {
