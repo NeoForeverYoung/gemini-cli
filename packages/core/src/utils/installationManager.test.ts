@@ -7,21 +7,12 @@
 import type { Mock } from 'vitest';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { InstallationManager } from './installationManager.js';
-import * as fs from 'node:fs';
 import * as os from 'node:os';
+import * as fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { GEMINI_DIR } from './paths.js';
 import { debugLogger } from './debugLogger.js';
-
-vi.mock('node:fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs')>();
-  return {
-    ...actual,
-    readFileSync: vi.fn(actual.readFileSync),
-    existsSync: vi.fn(actual.existsSync),
-  } as typeof actual;
-});
 
 vi.mock('os', async (importOriginal) => {
   const os = await importOriginal<typeof import('os')>();
@@ -87,11 +78,11 @@ describe('InstallationManager', () => {
     });
 
     it('should handle read errors and return a fallback ID', () => {
-      vi.mocked(fs.existsSync).mockReturnValueOnce(true);
-      const readSpy = vi.mocked(fs.readFileSync);
-      readSpy.mockImplementationOnce(() => {
-        throw new Error('Read error');
-      });
+      const installationIdFilePath = installationIdFile();
+      fs.mkdirSync(path.dirname(installationIdFilePath), { recursive: true });
+      fs.writeFileSync(installationIdFilePath, 'some-id');
+      fs.chmodSync(installationIdFilePath, 0o000); // Make file unreadable
+
       const consoleWarnSpy = vi
         .spyOn(debugLogger, 'warn')
         .mockImplementation(() => {});
