@@ -98,13 +98,10 @@ export abstract class BaseToolInvocation<
   constructor(
     readonly params: TParams,
     protected readonly messageBus?: MessageBus,
-  ) {
-    if (this.messageBus) {
-      console.debug(
-        `[DEBUG] Tool ${this.constructor.name} created with messageBus: YES`,
-      );
-    }
-  }
+    readonly _toolName?: string,
+    readonly _toolDisplayName?: string,
+    readonly _serverName?: string,
+  ) {}
 
   abstract getDescription(): string;
 
@@ -112,11 +109,59 @@ export abstract class BaseToolInvocation<
     return [];
   }
 
-  shouldConfirmExecute(
+  async shouldConfirmExecute(
+    abortSignal: AbortSignal,
+  ): Promise<ToolCallConfirmationDetails | false> {
+    if (this.messageBus) {
+      const decision = await this.getMessageBusDecision(abortSignal);
+      if (decision === 'ALLOW') {
+        return false;
+      }
+
+      if (decision === 'DENY') {
+        throw new Error(
+          `Tool execution for "${
+            this._toolDisplayName || this._toolName
+          }" denied by policy.`,
+        );
+      }
+
+      if (decision === 'ASK_USER') {
+        return this.getConfirmationDetails(abortSignal);
+      }
+    }
+    // When no message bus, use default confirmation flow
+    return this.getConfirmationDetails(abortSignal);
+  }
+
+  /**
+   * Subclasses should override this method to provide custom confirmation UI
+   * when the policy engine's decision is 'ASK_USER'.
+   * The base implementation provides a generic confirmation prompt.
+   */
+  protected async getConfirmationDetails(
     _abortSignal: AbortSignal,
   ): Promise<ToolCallConfirmationDetails | false> {
-    // Default implementation for tools that don't override it.
-    return Promise.resolve(false);
+    if (!this.messageBus) {
+      return false;
+    }
+
+    const confirmationDetails: ToolCallConfirmationDetails = {
+      type: 'info',
+      title: `Confirm: ${this._toolDisplayName || this._toolName}`,
+      prompt: this.getDescription(),
+      onConfirm: async (outcome: ToolConfirmationOutcome) => {
+        if (outcome === ToolConfirmationOutcome.ProceedAlways) {
+          if (this.messageBus && this._toolName) {
+            this.messageBus.publish({
+              type: MessageBusType.UPDATE_POLICY,
+              toolName: this._toolName,
+            });
+          }
+        }
+      },
+    };
+    return confirmationDetails;
   }
 
   protected getMessageBusDecision(
@@ -130,7 +175,7 @@ export abstract class BaseToolInvocation<
 
     const correlationId = randomUUID();
     const toolCall = {
-      name: this.constructor.name,
+      name: this._toolName || this.constructor.name,
       args: this.params as Record<string, unknown>,
     };
 
@@ -193,6 +238,7 @@ export abstract class BaseToolInvocation<
         type: MessageBusType.TOOL_CONFIRMATION_REQUEST,
         toolCall,
         correlationId,
+        serverName: this._serverName,
       };
 
       try {
@@ -284,6 +330,8 @@ export abstract class DeclarativeTool<
     readonly isOutputMarkdown: boolean = true,
     readonly canUpdateOutput: boolean = false,
     readonly messageBus?: MessageBus,
+    readonly extensionName?: string,
+    readonly extensionId?: string,
   ) {}
 
   get schema(): FunctionDeclaration {
@@ -407,7 +455,12 @@ export abstract class BaseDeclarativeTool<
     if (validationError) {
       throw new Error(validationError);
     }
-    return this.createInvocation(params, this.messageBus);
+    return this.createInvocation(
+      params,
+      this.messageBus,
+      this.name,
+      this.displayName,
+    );
   }
 
   override validateToolParams(params: TParams): string | null {
@@ -430,6 +483,8 @@ export abstract class BaseDeclarativeTool<
   protected abstract createInvocation(
     params: TParams,
     messageBus?: MessageBus,
+    _toolName?: string,
+    _toolDisplayName?: string,
   ): ToolInvocation<TParams, TResult>;
 }
 
@@ -527,7 +582,7 @@ export function hasCycleInSchema(schema: object): boolean {
 
     if ('$ref' in node && typeof node.$ref === 'string') {
       const ref = node.$ref;
-      if (ref === '#/' || pathRefs.has(ref)) {
+      if (ref === '#' || ref === '#/' || pathRefs.has(ref)) {
         // A ref to just '#/' is always a cycle.
         return true; // Cycle detected!
       }
@@ -567,7 +622,18 @@ export function hasCycleInSchema(schema: object): boolean {
   return traverse(schema, new Set<string>(), new Set<string>());
 }
 
-export type ToolResultDisplay = string | FileDiff | AnsiOutput;
+export interface TodoList {
+  todos: Todo[];
+}
+
+export type ToolResultDisplay = string | FileDiff | AnsiOutput | TodoList;
+
+export type TodoStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface Todo {
+  description: string;
+  status: TodoStatus;
+}
 
 export interface FileDiff {
   fileDiff: string;

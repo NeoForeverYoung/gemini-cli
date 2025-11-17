@@ -13,6 +13,7 @@ export enum MessageBusType {
   TOOL_POLICY_REJECTION = 'tool-policy-rejection',
   TOOL_EXECUTION_SUCCESS = 'tool-execution-success',
   TOOL_EXECUTION_FAILURE = 'tool-execution-failure',
+  UPDATE_POLICY = 'update-policy',
 }
 
 export interface ToolConfirmationRequest {
@@ -20,6 +21,7 @@ export interface ToolConfirmationRequest {
   toolCall: FunctionCall;
   correlationId: string;
   details?: ToolCallConfirmationDetails;
+  serverName?: string;
 }
 
 export interface ToolConfirmationResponse {
@@ -31,6 +33,11 @@ export interface ToolConfirmationResponse {
    * show its legacy confirmation UI instead of auto-proceeding.
    */
   requiresUserConfirmation?: boolean;
+}
+
+export interface UpdatePolicy {
+  type: MessageBusType.UPDATE_POLICY;
+  toolName: string;
 }
 
 export interface ToolPolicyRejection {
@@ -55,4 +62,5 @@ export type Message =
   | ToolConfirmationResponse
   | ToolPolicyRejection
   | ToolExecutionSuccess
-  | ToolExecutionFailure;
+  | ToolExecutionFailure
+  | UpdatePolicy;
