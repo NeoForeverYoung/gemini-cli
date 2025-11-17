@@ -109,6 +109,7 @@ describe('ChatCompressionService', () => {
   const mockPromptId = 'test-prompt-id';
 
   beforeEach(() => {
+    vi.resetAllMocks();
     service = new ChatCompressionService();
     mockChat = {
       getHistory: vi.fn(),
@@ -131,7 +132,7 @@ describe('ChatCompressionService', () => {
   });
 
   it('should return NOOP if history is empty', async () => {
-    vi.mocked(mockChat.getHistory).mockReturnValue([]);
+    vi.mocked(mockChat.getHistory).mockReturnValue(Promise.resolve([]));
     const result = await service.compress(
       mockChat,
       mockPromptId,
@@ -145,9 +146,9 @@ describe('ChatCompressionService', () => {
   });
 
   it('should return NOOP if previously failed and not forced', async () => {
-    vi.mocked(mockChat.getHistory).mockReturnValue([
-      { role: 'user', parts: [{ text: 'hi' }] },
-    ]);
+    vi.mocked(mockChat.getHistory).mockReturnValue(
+      Promise.resolve([{ role: 'user', parts: [{ text: 'hi' }] }]),
+    );
     const result = await service.compress(
       mockChat,
       mockPromptId,
@@ -161,9 +162,9 @@ describe('ChatCompressionService', () => {
   });
 
   it('should return NOOP if under token threshold and not forced', async () => {
-    vi.mocked(mockChat.getHistory).mockReturnValue([
-      { role: 'user', parts: [{ text: 'hi' }] },
-    ]);
+    vi.mocked(mockChat.getHistory).mockReturnValue(
+      Promise.resolve([{ role: 'user', parts: [{ text: 'hi' }] }]),
+    );
     vi.mocked(mockChat.getLastPromptTokenCount).mockReturnValue(600);
     vi.mocked(tokenLimit).mockReturnValue(1000);
     // Threshold is 0.7 * 1000 = 700. 600 < 700, so NOOP.
@@ -187,7 +188,7 @@ describe('ChatCompressionService', () => {
       { role: 'user', parts: [{ text: 'msg3' }] },
       { role: 'model', parts: [{ text: 'msg4' }] },
     ];
-    vi.mocked(mockChat.getHistory).mockReturnValue(history);
+    vi.mocked(mockChat.getHistory).mockReturnValue(Promise.resolve(history));
     vi.mocked(mockChat.getLastPromptTokenCount).mockReturnValue(800);
     vi.mocked(tokenLimit).mockReturnValue(1000);
     const mockGenerateContent = vi.fn().mockResolvedValue({
@@ -225,7 +226,7 @@ describe('ChatCompressionService', () => {
       { role: 'user', parts: [{ text: 'msg3' }] },
       { role: 'model', parts: [{ text: 'msg4' }] },
     ];
-    vi.mocked(mockChat.getHistory).mockReturnValue(history);
+    vi.mocked(mockChat.getHistory).mockReturnValue(Promise.resolve(history));
     vi.mocked(mockChat.getLastPromptTokenCount).mockReturnValue(100);
     vi.mocked(tokenLimit).mockReturnValue(1000);
 
@@ -260,7 +261,7 @@ describe('ChatCompressionService', () => {
       { role: 'user', parts: [{ text: 'msg1' }] },
       { role: 'model', parts: [{ text: 'msg2' }] },
     ];
-    vi.mocked(mockChat.getHistory).mockReturnValue(history);
+    vi.mocked(mockChat.getHistory).mockReturnValue(Promise.resolve(history));
     vi.mocked(mockChat.getLastPromptTokenCount).mockReturnValue(10);
     vi.mocked(tokenLimit).mockReturnValue(1000);
 

@@ -84,7 +84,7 @@ export class ChatCompressionService {
     config: Config,
     hasFailedCompressionAttempt: boolean,
   ): Promise<{ newHistory: Content[] | null; info: ChatCompressionInfo }> {
-    const curatedHistory = chat.getHistory(true);
+    const curatedHistory = await chat.getHistory(true);
 
     // Regardless of `force`, don't do anything if the history is empty.
     if (

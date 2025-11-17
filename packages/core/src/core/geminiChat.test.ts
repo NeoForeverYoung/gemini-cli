@@ -150,13 +150,23 @@ describe('GeminiChat', () => {
         { role: 'user', parts: [{ text: 'Hello' }] },
         { role: 'model', parts: [{ text: 'Hi there' }] },
       ];
-      const chatWithHistory = new GeminiChat(mockConfig, config, history);
+      const chatWithHistory = new GeminiChat(
+        mockConfig,
+        config,
+        mockConfig.getToolRegistry(),
+        history,
+      );
       const estimatedTokens = Math.ceil(JSON.stringify(history).length / 4);
       expect(chatWithHistory.getLastPromptTokenCount()).toBe(estimatedTokens);
     });
 
     it('should initialize lastPromptTokenCount for empty history', () => {
-      const chatEmpty = new GeminiChat(mockConfig, config, []);
+      const chatEmpty = new GeminiChat(
+        mockConfig,
+        config,
+        mockConfig.getToolRegistry(),
+        [],
+      );
       expect(chatEmpty.getLastPromptTokenCount()).toBe(
         Math.ceil(JSON.stringify([]).length / 4),
       );

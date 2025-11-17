@@ -304,35 +304,6 @@ export class GeminiChat {
     return session;
   }
 
-  private async maybeSetSession(): Promise<string> {
-    if (this.sessionId === undefined) {
-      this.userId = os.userInfo().username || randomUUID();
-      const session = await this.runner?.sessionService.createSession({
-        appName: this.appName,
-        userId: this.userId,
-        sessionId: this.config.getSessionId(),
-      });
-      this.sessionId = session!.id;
-    }
-    return this.sessionId!;
-  }
-
-  private async getSession(): Promise<Session> {
-    const sessionId = await this.maybeSetSession();
-    const session = await this.runner!.sessionService.getSession({
-      appName: this.appName,
-      userId: this.userId!,
-      sessionId,
-    });
-    if (!session) {
-      // Something's gone wrong; this should have been initialized.
-      throw new Error(
-        'Could not find initialized ADK session; please restart.',
-      );
-    }
-    return session;
-  }
-
   setSystemInstruction(sysInstr: string) {
     this.generationConfig.systemInstruction = sysInstr;
     if (this.adkMode) {

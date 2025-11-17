@@ -358,7 +358,7 @@ describe('AgentExecutor', () => {
       await executor.run(inputs, signal);
 
       const chatConstructorArgs = MockedGeminiChat.mock.calls[0];
-      const startHistory = chatConstructorArgs[2]; // history is the 3rd arg
+      const startHistory = chatConstructorArgs[3]; // history is the 4th arg
 
       expect(startHistory).toBeDefined();
       expect(startHistory).toHaveLength(2);

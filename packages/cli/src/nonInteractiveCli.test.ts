@@ -407,12 +407,12 @@ describe('runNonInteractive', () => {
       .mockReturnValueOnce(createStreamFromEvents(firstCallEvents))
       .mockReturnValueOnce(createStreamFromEvents(secondCallEvents));
 
-    await runNonInteractive(
-      mockConfig,
-      mockSettings,
-      'Use a tool',
-      'prompt-id-2',
-    );
+    await runNonInteractive({
+      config: mockConfig,
+      settings: mockSettings,
+      input: 'Use a tool',
+      prompt_id: 'prompt-id-2',
+    });
 
     expect(mockGeminiClient.sendMessageStream).toHaveBeenCalledTimes(2);
     expect(mockCoreExecuteToolCall).toHaveBeenCalledWith(
@@ -459,12 +459,12 @@ describe('runNonInteractive', () => {
       .mockReturnValueOnce(createStreamFromEvents(firstCallEvents))
       .mockReturnValueOnce(createStreamFromEvents(secondCallEvents));
 
-    await runNonInteractive(
-      mockConfig,
-      mockSettings,
-      'Use a tool',
-      'prompt-id-2',
-    );
+    await runNonInteractive({
+      config: mockConfig,
+      settings: mockSettings,
+      input: 'Use a tool',
+      prompt_id: 'prompt-id-2',
+    });
 
     expect(mockGeminiClient.sendMessageStream).toHaveBeenCalledTimes(2);
     expect(mockCoreExecuteToolCall).toHaveBeenCalledWith(
@@ -725,7 +725,12 @@ describe('runNonInteractive', () => {
       createStreamFromEvents(events),
     );
 
-    await runNonInteractive(mockConfig, 'ADK test', 'prompt-id-adk');
+    await runNonInteractive({
+      config: mockConfig,
+      settings: mockSettings,
+      input: 'ADK test',
+      prompt_id: 'prompt-id-adk',
+    });
 
     expect(mockGeminiClient.sendMessageStream).toHaveBeenCalledTimes(1);
     expect(mockCoreExecuteToolCall).not.toHaveBeenCalled();

@@ -881,7 +881,9 @@ describe('LoopDetectionService LLM Checks', () => {
         parts: [{ text: 'Some follow up text' }],
       },
     ];
-    vi.mocked(mockGeminiClient.getHistory).mockReturnValue(functionCallHistory);
+    vi.mocked(mockGeminiClient.getHistory).mockReturnValue(
+      Promise.resolve(functionCallHistory),
+    );
 
     mockBaseLlmClient.generateJson = vi
       .fn()

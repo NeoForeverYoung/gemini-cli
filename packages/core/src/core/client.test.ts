@@ -347,7 +347,7 @@ describe('Gemini Client (client.ts)', () => {
       ];
 
       const chat = await client.startChat(extraHistory);
-      const history = chat.getHistory();
+      const history = await chat.getHistory();
 
       // The first message should be the environment context
       expect(history[0].role).toBe('user');
