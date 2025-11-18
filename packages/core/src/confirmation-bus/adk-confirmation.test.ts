@@ -15,7 +15,7 @@ import {
 } from '../tools/tools.js';
 import { ApprovalMode, PolicyDecision } from '../policy/types.js';
 import { MessageBusType } from './types.js';
-import { AdkToolAdapter } from '../tools/tools.js';
+import { DeclarativeToAdkAdapter } from '../tools/adapters.js';
 import type { PolicyEngine } from '../policy/policy-engine.js';
 import type { ToolContext } from '@google/adk';
 
@@ -75,7 +75,7 @@ describe('ADK Tool Confirmation Flow', () => {
       }),
     } as unknown as AnyDeclarativeTool;
 
-    const adkTool = new AdkToolAdapter(tool);
+    const adkTool = new DeclarativeToAdkAdapter(tool);
     const toolArgs = { foo: 'bar' };
     const toolContext = {} as unknown as ToolContext;
 
@@ -137,7 +137,7 @@ describe('ADK Tool Confirmation Flow', () => {
       }),
     } as unknown as AnyDeclarativeTool;
 
-    const adkTool = new AdkToolAdapter(tool);
+    const adkTool = new DeclarativeToAdkAdapter(tool);
     const toolArgs = { foo: 'bar' };
     const toolContext = {} as unknown as ToolContext;
 

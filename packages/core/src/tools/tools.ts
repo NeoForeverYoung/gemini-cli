@@ -17,28 +17,6 @@ import {
   type ToolConfirmationRequest,
   type ToolConfirmationResponse,
 } from '../confirmation-bus/types.js';
-import { BaseTool as AdkBaseTool, type RunAsyncToolRequest } from '@google/adk';
-
-/**
- * An adapter that wraps a gemini-cli DeclarativeTool to make it compatible
- * with the adk LlmAgent.
- */
-export class AdkToolAdapter extends AdkBaseTool {
-  constructor(readonly tool: AnyDeclarativeTool) {
-    super(tool);
-  }
-
-  override _getDeclaration(): FunctionDeclaration | undefined {
-    return this.tool.schema;
-  }
-
-  async runAsync(request: RunAsyncToolRequest): Promise<unknown> {
-    const invocation = this.tool.build(request.args);
-    const abortController = new AbortController();
-    const result = await invocation.execute(abortController.signal);
-    return result;
-  }
-}
 
 /**
  * Represents a validated and ready-to-execute tool call.
@@ -492,15 +470,6 @@ export abstract class BaseDeclarativeTool<
  * A type alias for a declarative tool where the specific parameter and result types are not known.
  */
 export type AnyDeclarativeTool = DeclarativeTool<object, ToolResult>;
-
-/**
- * Type guard to check if an object is a Tool.
- * @param obj The object to check.
- * @returns True if the object is a Tool, false otherwise.
- */
-export function isAdkToolAdapter(obj: unknown): obj is AdkToolAdapter {
-  return obj instanceof AdkToolAdapter;
-}
 
 export function isTool(obj: unknown): obj is AnyDeclarativeTool {
   return (

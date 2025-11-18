@@ -10,12 +10,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BasePlugin, type BaseTool, type ToolContext } from '@google/adk';
+import {
+  BasePlugin,
+  type BaseTool,
+  type ToolContext,
+  FunctionTool,
+} from '@google/adk';
 import { ApprovalMode, type AnyDeclarativeTool } from '../index.js';
 import { randomUUID } from 'node:crypto';
 import type { MessageBus } from './message-bus.js';
 import { MessageBusType, type ToolConfirmationResponse } from './types.js';
-import { AdkToolAdapter, ToolConfirmationOutcome } from '../tools/tools.js';
+import { ToolConfirmationOutcome } from '../tools/tools.js';
+import {
+  DeclarativeToAdkAdapter,
+  AdkToDeclarativeAdapter,
+} from '../tools/adapters.js';
 import { type Config } from '../config/config.js';
 
 interface ContextWithCorrelationId extends ToolContext {
@@ -44,11 +53,19 @@ export class MessageBusPlugin extends BasePlugin {
     }
 
     let declarativeTool: AnyDeclarativeTool;
-    if (tool instanceof AdkToolAdapter) {
+    if (tool instanceof DeclarativeToAdkAdapter) {
       declarativeTool = tool.tool;
+    } else if (tool instanceof FunctionTool) {
+      declarativeTool = new AdkToDeclarativeAdapter(
+        tool,
+        toolContext,
+        this.messageBus,
+      );
     } else {
       // This shouldn't happen; the wrong type of tool was passed in.
-      throw new Error('Invalid tool type passed: ' + tool);
+      throw new Error(
+        `Invalid tool type passed: ${tool.constructor.name}. Expected DeclarativeToAdkAdapter or FunctionTool.`,
+      );
     }
     const invocation = declarativeTool.build(toolArgs);
     const confirmationDetails = await invocation.shouldConfirmExecute(

@@ -9,14 +9,14 @@ import type { z } from 'zod';
 import type { Config } from '../config/config.js';
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import {
-  AdkToolAdapter,
   type AnyDeclarativeTool,
-  Kind,
   BaseDeclarativeTool,
   BaseToolInvocation,
+  Kind,
   type ToolInvocation,
   type ToolResult,
 } from '../tools/tools.js';
+import { DeclarativeToAdkAdapter } from '../tools/adapters.js';
 import type { AgentDefinition } from './types.js';
 import { convertInputConfigToGenaiSchema } from './schema-converter.js';
 import { TASK_COMPLETE_TOOL_NAME } from './executor.js';
@@ -69,10 +69,10 @@ function prepareTools<TOutput extends z.ZodTypeAny>(
   config: Config,
   definition: AgentDefinition<TOutput>,
   toolRegistry: ToolRegistry,
-): AdkToolAdapter[] {
+): DeclarativeToAdkAdapter[] {
   const messageBus = config.getMessageBus();
   const { toolConfig, outputConfig } = definition;
-  const toolsList: AdkToolAdapter[] = [];
+  const toolsList: DeclarativeToAdkAdapter[] = [];
 
   if (toolConfig) {
     const toolNamesToLoad: string[] = [];
@@ -80,14 +80,16 @@ function prepareTools<TOutput extends z.ZodTypeAny>(
       if (typeof toolRef === 'string') {
         toolNamesToLoad.push(toolRef);
       } else {
-        toolsList.push(new AdkToolAdapter(toolRef as AnyDeclarativeTool));
+        toolsList.push(
+          new DeclarativeToAdkAdapter(toolRef as AnyDeclarativeTool),
+        );
       }
     }
     toolsList.push(
       ...toolRegistry
         .getAllTools()
         .filter((tool) => toolNamesToLoad.includes(tool.name))
-        .map((tool) => new AdkToolAdapter(tool)),
+        .map((tool) => new DeclarativeToAdkAdapter(tool)),
     );
   }
 
@@ -119,7 +121,7 @@ function prepareTools<TOutput extends z.ZodTypeAny>(
   }
 
   toolsList.push(
-    new AdkToolAdapter(new CompleteTaskTool(completeTool, messageBus)),
+    new DeclarativeToAdkAdapter(new CompleteTaskTool(completeTool, messageBus)),
   );
 
   return toolsList;

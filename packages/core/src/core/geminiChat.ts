@@ -25,11 +25,8 @@ import {
   getEffectiveModel,
   isGemini2Model,
 } from '../config/models.js';
-import {
-  AdkToolAdapter,
-  type AnyDeclarativeTool,
-  hasCycleInSchema,
-} from '../tools/tools.js';
+import { type AnyDeclarativeTool, hasCycleInSchema } from '../tools/tools.js';
+import { DeclarativeToAdkAdapter } from '../tools/adapters.js';
 import type { StructuredError } from './turn.js';
 import { toGenerateContentResponse } from './responseConverter.js';
 import {
@@ -245,7 +242,7 @@ export class GeminiChat {
 
       const adkTools = toolRegistry
         .getAllTools()
-        .map((tool) => new AdkToolAdapter(tool as AnyDeclarativeTool));
+        .map((tool) => new DeclarativeToAdkAdapter(tool as AnyDeclarativeTool));
 
       const agentRegistry = this.config.getAgentRegistry();
       const subAgents = agentRegistry
@@ -745,7 +742,7 @@ export class GeminiChat {
         tools?.flatMap(
           (tool) =>
             tool.functionDeclarations?.map(
-              (func) => new AdkToolAdapter(func as AnyDeclarativeTool),
+              (func) => new DeclarativeToAdkAdapter(func as AnyDeclarativeTool),
             ) || [],
         ) || [];
     }
