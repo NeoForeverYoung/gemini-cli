@@ -11,17 +11,18 @@
  */
 
 import { BasePlugin, type BaseTool, type ToolContext } from '@google/adk';
-import { isAdkToolAdapter, type AnyDeclarativeTool } from '../index.js';
+import { ApprovalMode, type AnyDeclarativeTool } from '../index.js';
 import { randomUUID } from 'node:crypto';
 import type { MessageBus } from './message-bus.js';
-import {
-  MessageBusType,
-  type ToolConfirmationRequest,
-  type ToolConfirmationResponse,
-} from './types.js';
+import { MessageBusType, type ToolConfirmationResponse } from './types.js';
+import { AdkToolAdapter, ToolConfirmationOutcome } from '../tools/tools.js';
+import { type Config } from '../config/config.js';
 
 export class MessageBusPlugin extends BasePlugin {
-  constructor(private readonly messageBus: MessageBus) {
+  constructor(
+    private readonly messageBus: MessageBus,
+    private readonly config: Config,
+  ) {
     super('message-bus-plugin');
   }
 
@@ -33,26 +34,49 @@ export class MessageBusPlugin extends BasePlugin {
     toolArgs: { [key: string]: unknown };
     toolContext: ToolContext;
   }): Promise<{ [key: string]: unknown } | undefined> {
+    if (this.config.getApprovalMode() === ApprovalMode.YOLO) {
+      return Promise.resolve(undefined);
+    }
+
     let declarativeTool: AnyDeclarativeTool;
-    if (isAdkToolAdapter(tool)) {
+    if (tool instanceof AdkToolAdapter) {
       declarativeTool = tool.tool;
     } else {
       // This shouldn't happen; the wrong type of tool was passed in.
       throw new Error('Invalid tool type passed: ' + tool);
     }
     const invocation = declarativeTool.build(toolArgs);
-    const details = await invocation.shouldConfirmExecute(
+    const confirmationDetails = await invocation.shouldConfirmExecute(
       new AbortController().signal,
     );
-    if (!details) {
+    if (!confirmationDetails) {
       return Promise.resolve(undefined);
     }
 
     const correlationId = randomUUID();
-    const toolCall = {
-      name: tool.name,
-      args: toolArgs,
-    };
+    if (confirmationDetails) {
+      // We wrap the original onConfirm in a fn that also registers the
+      // message bus response.
+      const originalOnConfirm = confirmationDetails.onConfirm;
+      confirmationDetails.onConfirm = async (
+        outcome: ToolConfirmationOutcome,
+      ) =>
+        this.handleConfirmation(
+          correlationId,
+          originalOnConfirm,
+          outcome,
+          new AbortController().signal,
+        );
+
+      this.messageBus.publish({
+        type: MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST,
+        correlationId,
+        tool: declarativeTool,
+        invocation,
+        toolArgs,
+        confirmationDetails,
+      });
+    }
 
     return new Promise((resolve, reject) => {
       const responseHandler = (response: ToolConfirmationResponse) => {
@@ -62,7 +86,7 @@ export class MessageBusPlugin extends BasePlugin {
             responseHandler,
           );
           if (response.confirmed) {
-            resolve(undefined); // Proceed with tool call
+            resolve(undefined);
           } else {
             // This will be caught by the runner and returned as a tool error
             reject(new Error('Tool execution was denied.'));
@@ -74,24 +98,24 @@ export class MessageBusPlugin extends BasePlugin {
         MessageBusType.TOOL_CONFIRMATION_RESPONSE,
         responseHandler,
       );
-
-      const request: ToolConfirmationRequest = {
-        type: MessageBusType.TOOL_CONFIRMATION_REQUEST,
-        toolCall,
-        correlationId,
-        details,
-      };
-
-      try {
-        this.messageBus.publish(request);
-      } catch (_error) {
-        this.messageBus.unsubscribe(
-          MessageBusType.TOOL_CONFIRMATION_RESPONSE,
-          responseHandler,
-        );
-        // If publishing fails, proceed with the tool call
-        resolve(undefined);
-      }
     });
+  }
+
+  private handleConfirmation(
+    correlationId: string,
+    onConfirm: (outcome: ToolConfirmationOutcome) => void,
+    outcome: ToolConfirmationOutcome,
+    _signal: AbortSignal,
+  ) {
+    const confirmed =
+      outcome === ToolConfirmationOutcome.ProceedOnce ||
+      outcome === ToolConfirmationOutcome.ProceedAlways;
+
+    this.messageBus.publish({
+      type: MessageBusType.TOOL_CONFIRMATION_RESPONSE,
+      correlationId,
+      confirmed,
+    });
+    return onConfirm(outcome);
   }
 }
