@@ -25,6 +25,7 @@ describe('ADK Tool Confirmation Flow', () => {
   let scheduler: CoreToolScheduler;
   let plugin: MessageBusPlugin;
   let onToolCallsUpdate: ReturnType<typeof vi.fn>;
+  let onAllToolCallsComplete: ReturnType<typeof vi.fn>;
   let policyEngine: PolicyEngine;
 
   beforeEach(() => {
@@ -45,10 +46,12 @@ describe('ADK Tool Confirmation Flow', () => {
     } as unknown as Config;
 
     onToolCallsUpdate = vi.fn();
+    onAllToolCallsComplete = vi.fn();
 
     scheduler = new CoreToolScheduler({
       config,
       onToolCallsUpdate,
+      onAllToolCallsComplete,
       getPreferredEditor: () => undefined,
       onEditorClose: () => {},
     });
@@ -115,6 +118,9 @@ describe('ADK Tool Confirmation Flow', () => {
     expect(lastCall).toHaveLength(1);
     expect(lastCall[0].status).toBe('success');
     expect(lastCall[0].request.callId).toBe(correlationId);
+
+    // 6. Verify onAllToolCallsComplete was called
+    expect(onAllToolCallsComplete).toHaveBeenCalledWith([lastCall[0]]);
   });
 
   it('should update scheduler status on tool failure', async () => {
@@ -173,5 +179,8 @@ describe('ADK Tool Confirmation Flow', () => {
     expect(lastCall[0].status).toBe('error');
     expect(lastCall[0].request.callId).toBe(correlationId);
     expect(lastCall[0].response.error).toBe(error);
+
+    // 6. Verify onAllToolCallsComplete was called
+    expect(onAllToolCallsComplete).toHaveBeenCalledWith([lastCall[0]]);
   });
 });

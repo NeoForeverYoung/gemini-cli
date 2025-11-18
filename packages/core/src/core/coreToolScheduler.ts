@@ -379,110 +379,7 @@ export class CoreToolScheduler {
       // Check if we've already subscribed a handler to this message bus
       if (!CoreToolScheduler.subscribedMessageBuses.has(messageBus)) {
         if (this.config.getAdkMode()) {
-          const displayRequestHandler = (
-            request: ToolConfirmationDisplayRequest,
-          ) => {
-            const waitingToolCall: WaitingToolCall = {
-              status: 'awaiting_approval',
-              request: {
-                callId: request.correlationId,
-                name: request.tool.name,
-                args: request.toolArgs,
-                isClientInitiated: true,
-                prompt_id: '',
-              },
-              tool: request.tool,
-              invocation: request.invocation,
-              confirmationDetails: request.confirmationDetails,
-            };
-
-            this.toolCalls.push(waitingToolCall);
-
-            if (this.onToolCallsUpdate) {
-              this.onToolCallsUpdate([waitingToolCall]);
-            }
-          };
-
-          const successHandler = (response: ToolExecutionSuccess) => {
-            const toolCallIndex = this.toolCalls.findIndex(
-              (tc) => tc.request.callId === response.toolCall.id,
-            );
-            if (toolCallIndex === -1) return;
-
-            const toolCall = this.toolCalls[toolCallIndex];
-            // We can only transition from awaiting_approval in this flow
-            if (toolCall.status !== 'awaiting_approval') return;
-
-            const successfulToolCall: SuccessfulToolCall = {
-              status: 'success',
-              request: toolCall.request,
-              tool: toolCall.tool,
-              invocation: toolCall.invocation,
-              response: {
-                callId: toolCall.request.callId,
-                responseParts: convertToFunctionResponse(
-                  toolCall.request.name,
-                  toolCall.request.callId,
-                  JSON.stringify(response.result),
-                ),
-                resultDisplay: JSON.stringify(response.result, null, 2),
-                contentLength: JSON.stringify(response.result).length,
-                error: undefined,
-                errorType: undefined,
-              },
-              outcome: toolCall.outcome,
-            };
-
-            this.toolCalls[toolCallIndex] = successfulToolCall;
-
-            if (this.onToolCallsUpdate) {
-              this.onToolCallsUpdate([successfulToolCall]);
-            }
-          };
-
-          const failureHandler = (response: ToolExecutionFailure) => {
-            const toolCallIndex = this.toolCalls.findIndex(
-              (tc) => tc.request.callId === response.toolCall.id,
-            );
-            if (toolCallIndex === -1) return;
-
-            const toolCall = this.toolCalls[toolCallIndex];
-            if (toolCall.status !== 'awaiting_approval') return;
-
-            const erroredToolCall: ErroredToolCall = {
-              status: 'error',
-              request: toolCall.request,
-              tool: toolCall.tool,
-              response: createErrorResponse(
-                toolCall.request,
-                response.error,
-                ToolErrorType.EXECUTION_FAILED,
-              ),
-              outcome: toolCall.outcome,
-            };
-
-            this.toolCalls[toolCallIndex] = erroredToolCall;
-
-            if (this.onToolCallsUpdate) {
-              this.onToolCallsUpdate([erroredToolCall]);
-            }
-          };
-
-          messageBus.subscribe(
-            MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST,
-            displayRequestHandler,
-          );
-          messageBus.subscribe(
-            MessageBusType.TOOL_EXECUTION_SUCCESS,
-            successHandler,
-          );
-          messageBus.subscribe(
-            MessageBusType.TOOL_EXECUTION_FAILURE,
-            failureHandler,
-          );
-
-          // Store the handler in the WeakMap so we don't subscribe again
-          CoreToolScheduler.subscribedMessageBuses.add(messageBus);
+          this.setupAdkSubscriptions(messageBus);
         } else {
           // Create a shared handler that will be used for this message bus
           const sharedHandler = (request: ToolConfirmationRequest) => {
@@ -500,12 +397,119 @@ export class CoreToolScheduler {
             MessageBusType.TOOL_CONFIRMATION_REQUEST,
             sharedHandler,
           );
-
-          // Store the handler in the WeakMap so we don't subscribe again
-          CoreToolScheduler.subscribedMessageBuses.add(messageBus);
         }
+        // Store the handler in the WeakMap so we don't subscribe again
+        CoreToolScheduler.subscribedMessageBuses.add(messageBus);
       }
     }
+  }
+
+  private setupAdkSubscriptions(messageBus: MessageBus): void {
+    const displayRequestHandler = (request: ToolConfirmationDisplayRequest) => {
+      const waitingToolCall: WaitingToolCall = {
+        status: 'awaiting_approval',
+        request: {
+          callId: request.correlationId,
+          name: request.tool.name,
+          args: request.toolArgs,
+          isClientInitiated: true,
+          prompt_id: '',
+        },
+        tool: request.tool,
+        invocation: request.invocation,
+        confirmationDetails: request.confirmationDetails,
+      };
+
+      this.toolCalls.push(waitingToolCall);
+
+      if (this.onToolCallsUpdate) {
+        this.onToolCallsUpdate([waitingToolCall]);
+      }
+    };
+
+    const successHandler = (response: ToolExecutionSuccess) => {
+      const toolCallIndex = this.toolCalls.findIndex(
+        (tc) => tc.request.callId === response.toolCall.id,
+      );
+      if (toolCallIndex === -1) return;
+
+      const toolCall = this.toolCalls[toolCallIndex];
+      // We can only transition from awaiting_approval in this flow
+      if (toolCall.status !== 'awaiting_approval') return;
+
+      const successfulToolCall: SuccessfulToolCall = {
+        status: 'success',
+        request: toolCall.request,
+        tool: toolCall.tool,
+        invocation: toolCall.invocation,
+        response: {
+          callId: toolCall.request.callId,
+          responseParts: convertToFunctionResponse(
+            toolCall.request.name,
+            toolCall.request.callId,
+            JSON.stringify(response.result),
+          ),
+          resultDisplay: JSON.stringify(response.result, null, 2),
+          contentLength: JSON.stringify(response.result).length,
+          error: undefined,
+          errorType: undefined,
+        },
+        outcome: toolCall.outcome,
+      };
+
+      this.toolCalls[toolCallIndex] = successfulToolCall;
+
+      if (this.onToolCallsUpdate) {
+        this.onToolCallsUpdate([successfulToolCall]);
+      }
+
+      // Signal completion to the UI to clear the display
+      if (this.onAllToolCallsComplete) {
+        this.onAllToolCallsComplete([successfulToolCall]);
+      }
+      this.toolCalls = [];
+    };
+
+    const failureHandler = (response: ToolExecutionFailure) => {
+      const toolCallIndex = this.toolCalls.findIndex(
+        (tc) => tc.request.callId === response.toolCall.id,
+      );
+      if (toolCallIndex === -1) return;
+
+      const toolCall = this.toolCalls[toolCallIndex];
+      if (toolCall.status !== 'awaiting_approval') return;
+
+      const erroredToolCall: ErroredToolCall = {
+        status: 'error',
+        request: toolCall.request,
+        tool: toolCall.tool,
+        response: createErrorResponse(
+          toolCall.request,
+          response.error,
+          ToolErrorType.EXECUTION_FAILED,
+        ),
+        outcome: toolCall.outcome,
+      };
+
+      this.toolCalls[toolCallIndex] = erroredToolCall;
+
+      if (this.onToolCallsUpdate) {
+        this.onToolCallsUpdate([erroredToolCall]);
+      }
+
+      // Signal completion to the UI to clear the display
+      if (this.onAllToolCallsComplete) {
+        this.onAllToolCallsComplete([erroredToolCall]);
+      }
+      this.toolCalls = [];
+    };
+
+    messageBus.subscribe(
+      MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST,
+      displayRequestHandler,
+    );
+    messageBus.subscribe(MessageBusType.TOOL_EXECUTION_SUCCESS, successHandler);
+    messageBus.subscribe(MessageBusType.TOOL_EXECUTION_FAILURE, failureHandler);
   }
 
   private setStatusInternal(
