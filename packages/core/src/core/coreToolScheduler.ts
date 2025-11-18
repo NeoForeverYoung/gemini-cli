@@ -48,6 +48,8 @@ import { ShellToolInvocation } from '../tools/shell.js';
 import type {
   ToolConfirmationRequest,
   ToolConfirmationDisplayRequest,
+  ToolExecutionSuccess,
+  ToolExecutionFailure,
 } from '../confirmation-bus/types.js';
 import { MessageBusType } from '../confirmation-bus/types.js';
 import type { MessageBus } from '../confirmation-bus/message-bus.js';
@@ -394,14 +396,89 @@ export class CoreToolScheduler {
               confirmationDetails: request.confirmationDetails,
             };
 
+            this.toolCalls.push(waitingToolCall);
+
             if (this.onToolCallsUpdate) {
               this.onToolCallsUpdate([waitingToolCall]);
+            }
+          };
+
+          const successHandler = (response: ToolExecutionSuccess) => {
+            const toolCallIndex = this.toolCalls.findIndex(
+              (tc) => tc.request.callId === response.toolCall.id,
+            );
+            if (toolCallIndex === -1) return;
+
+            const toolCall = this.toolCalls[toolCallIndex];
+            // We can only transition from awaiting_approval in this flow
+            if (toolCall.status !== 'awaiting_approval') return;
+
+            const successfulToolCall: SuccessfulToolCall = {
+              status: 'success',
+              request: toolCall.request,
+              tool: toolCall.tool,
+              invocation: toolCall.invocation,
+              response: {
+                callId: toolCall.request.callId,
+                responseParts: convertToFunctionResponse(
+                  toolCall.request.name,
+                  toolCall.request.callId,
+                  JSON.stringify(response.result),
+                ),
+                resultDisplay: JSON.stringify(response.result, null, 2),
+                contentLength: JSON.stringify(response.result).length,
+                error: undefined,
+                errorType: undefined,
+              },
+              outcome: toolCall.outcome,
+            };
+
+            this.toolCalls[toolCallIndex] = successfulToolCall;
+
+            if (this.onToolCallsUpdate) {
+              this.onToolCallsUpdate([successfulToolCall]);
+            }
+          };
+
+          const failureHandler = (response: ToolExecutionFailure) => {
+            const toolCallIndex = this.toolCalls.findIndex(
+              (tc) => tc.request.callId === response.toolCall.id,
+            );
+            if (toolCallIndex === -1) return;
+
+            const toolCall = this.toolCalls[toolCallIndex];
+            if (toolCall.status !== 'awaiting_approval') return;
+
+            const erroredToolCall: ErroredToolCall = {
+              status: 'error',
+              request: toolCall.request,
+              tool: toolCall.tool,
+              response: createErrorResponse(
+                toolCall.request,
+                response.error,
+                ToolErrorType.EXECUTION_FAILED,
+              ),
+              outcome: toolCall.outcome,
+            };
+
+            this.toolCalls[toolCallIndex] = erroredToolCall;
+
+            if (this.onToolCallsUpdate) {
+              this.onToolCallsUpdate([erroredToolCall]);
             }
           };
 
           messageBus.subscribe(
             MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST,
             displayRequestHandler,
+          );
+          messageBus.subscribe(
+            MessageBusType.TOOL_EXECUTION_SUCCESS,
+            successHandler,
+          );
+          messageBus.subscribe(
+            MessageBusType.TOOL_EXECUTION_FAILURE,
+            failureHandler,
           );
 
           // Store the handler in the WeakMap so we don't subscribe again

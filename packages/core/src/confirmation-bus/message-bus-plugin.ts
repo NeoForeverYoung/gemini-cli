@@ -18,6 +18,10 @@ import { MessageBusType, type ToolConfirmationResponse } from './types.js';
 import { AdkToolAdapter, ToolConfirmationOutcome } from '../tools/tools.js';
 import { type Config } from '../config/config.js';
 
+interface ContextWithCorrelationId extends ToolContext {
+  correlationId?: string;
+}
+
 export class MessageBusPlugin extends BasePlugin {
   constructor(
     private readonly messageBus: MessageBus,
@@ -29,6 +33,7 @@ export class MessageBusPlugin extends BasePlugin {
   override async beforeToolCallback({
     tool,
     toolArgs,
+    toolContext,
   }: {
     tool: BaseTool;
     toolArgs: { [key: string]: unknown };
@@ -68,6 +73,10 @@ export class MessageBusPlugin extends BasePlugin {
           new AbortController().signal,
         );
 
+      // Store the correlation ID in the tool context so we can use it in the
+      // afterToolCallback and onToolErrorCallback.
+      (toolContext as ContextWithCorrelationId).correlationId = correlationId;
+
       this.messageBus.publish({
         type: MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST,
         correlationId,
@@ -99,6 +108,58 @@ export class MessageBusPlugin extends BasePlugin {
         responseHandler,
       );
     });
+  }
+
+  override async afterToolCallback({
+    tool,
+    toolArgs,
+    toolContext,
+    result,
+  }: {
+    tool: BaseTool;
+    toolArgs: Record<string, unknown>;
+    toolContext: ToolContext;
+    result: Record<string, unknown>;
+  }): Promise<Record<string, unknown> | undefined> {
+    const correlationId = (toolContext as ContextWithCorrelationId)
+      .correlationId;
+    this.messageBus.publish({
+      type: MessageBusType.TOOL_EXECUTION_SUCCESS,
+      toolCall: {
+        id: correlationId || '',
+        name: tool.name,
+        args: toolArgs,
+      },
+      result,
+    });
+    // Return undefined to let the original result pass through unmodified.
+    return undefined;
+  }
+
+  override async onToolErrorCallback({
+    tool,
+    toolArgs,
+    toolContext,
+    error,
+  }: {
+    tool: BaseTool;
+    toolArgs: Record<string, unknown>;
+    toolContext: ToolContext;
+    error: Error;
+  }): Promise<Record<string, unknown> | undefined> {
+    const correlationId = (toolContext as ContextWithCorrelationId)
+      .correlationId;
+    this.messageBus.publish({
+      type: MessageBusType.TOOL_EXECUTION_FAILURE,
+      toolCall: {
+        id: correlationId || '',
+        name: tool.name,
+        args: toolArgs,
+      },
+      error,
+    });
+    // Return undefined to let the original error propagate.
+    return undefined;
   }
 
   private handleConfirmation(

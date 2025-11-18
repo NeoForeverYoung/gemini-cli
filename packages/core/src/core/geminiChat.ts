@@ -260,6 +260,7 @@ export class GeminiChat {
 
       const messageBusPlugin = new MessageBusPlugin(
         this.config.getMessageBus(),
+        this.config,
       );
       this.runner = new InMemoryRunner({
         agent: this.agent,
