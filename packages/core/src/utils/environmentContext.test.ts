@@ -18,7 +18,6 @@ import {
   getDirectoryContextString,
 } from './environmentContext.js';
 import type { Config } from '../config/config.js';
-import type { Storage } from '../config/storage.js';
 import { getFolderStructure } from './getFolderStructure.js';
 
 vi.mock('../config/config.js');
@@ -36,9 +35,6 @@ describe('getDirectoryContextString', () => {
         getDirectories: vi.fn().mockReturnValue(['/test/dir']),
       }),
       getFileService: vi.fn(),
-      storage: {
-        getProjectTempDir: vi.fn().mockReturnValue('/tmp/project-temp'),
-      } as unknown as Storage,
     };
     vi.mocked(getFolderStructure).mockResolvedValue('Mock Folder Structure');
   });
@@ -94,9 +90,6 @@ describe('getEnvironmentContext', () => {
       getFileService: vi.fn(),
 
       getToolRegistry: vi.fn().mockReturnValue(mockToolRegistry),
-      storage: {
-        getProjectTempDir: vi.fn().mockReturnValue('/tmp/project-temp'),
-      } as unknown as Storage,
     };
 
     vi.mocked(getFolderStructure).mockResolvedValue('Mock Folder Structure');
@@ -110,7 +103,7 @@ describe('getEnvironmentContext', () => {
   it('should return basic environment context for a single directory', async () => {
     const parts = await getEnvironmentContext(mockConfig as Config);
 
-    expect(parts.length).toBe(2);
+    expect(parts.length).toBe(1);
     const context = parts[0].text;
 
     expect(context).toContain("Today's date is");
@@ -125,14 +118,11 @@ describe('getEnvironmentContext', () => {
     expect(getFolderStructure).toHaveBeenCalledWith('/test/dir', {
       fileService: undefined,
     });
-    expect(parts[1].text).toBe(
-      '\nThis is all FYI; no need to act yet, respond only with exactly "Got it. Thanks for the context!"',
-    );
   });
 
   it('should return basic environment context for multiple directories', async () => {
     (
-      vi.mocked(mockConfig.getWorkspaceContext!()!).getDirectories as Mock
+      vi.mocked(mockConfig.getWorkspaceContext!)().getDirectories as Mock
     ).mockReturnValue(['/test/dir1', '/test/dir2']);
     vi.mocked(getFolderStructure)
       .mockResolvedValueOnce('Structure 1')
@@ -140,7 +130,7 @@ describe('getEnvironmentContext', () => {
 
     const parts = await getEnvironmentContext(mockConfig as Config);
 
-    expect(parts.length).toBe(2);
+    expect(parts.length).toBe(1);
     const context = parts[0].text;
 
     expect(context).toContain(
@@ -150,9 +140,6 @@ describe('getEnvironmentContext', () => {
       'Here is the folder structure of the current working directories:\n\nStructure 1\nStructure 2',
     );
     expect(getFolderStructure).toHaveBeenCalledTimes(2);
-    expect(parts[1].text).toBe(
-      '\nThis is all FYI; no need to act yet, respond only with exactly "Got it. Thanks for the context!"',
-    );
   });
 
   it('should handle read_many_files returning no content', async () => {
@@ -165,10 +152,7 @@ describe('getEnvironmentContext', () => {
 
     const parts = await getEnvironmentContext(mockConfig as Config);
 
-    expect(parts.length).toBe(2); // No extra part added
-    expect(parts[1].text).toBe(
-      '\nThis is all FYI; no need to act yet, respond only with exactly "Got it. Thanks for the context!"',
-    );
+    expect(parts.length).toBe(1); // No extra part added
   });
 
   it('should handle read_many_files tool not being found', async () => {
@@ -176,9 +160,6 @@ describe('getEnvironmentContext', () => {
 
     const parts = await getEnvironmentContext(mockConfig as Config);
 
-    expect(parts.length).toBe(2); // No extra part added
-    expect(parts[1].text).toBe(
-      '\nThis is all FYI; no need to act yet, respond only with exactly "Got it. Thanks for the context!"',
-    );
+    expect(parts.length).toBe(1); // No extra part added
   });
 });

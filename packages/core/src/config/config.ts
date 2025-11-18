@@ -1391,7 +1391,7 @@ export class Config {
     }
 
     // Register Subagents as Tools
-    if (this.getCodebaseInvestigatorSettings().enabled) {
+    if (this.getCodebaseInvestigatorSettings().enabled && !this.getAdkMode()) {
       const definition = this.agentRegistry.getDefinition(
         'codebase_investigator',
       );

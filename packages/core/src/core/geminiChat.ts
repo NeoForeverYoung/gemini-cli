@@ -57,6 +57,7 @@ import { isFunctionResponse } from '../utils/messageInspectors.js';
 import { partListUnionToString } from './geminiRequest.js';
 import * as os from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { createAdkAgent } from '../agents/adk-factory.js';
 
 export enum StreamEventType {
   /** A regular content chunk from the API. */
@@ -242,11 +243,17 @@ export class GeminiChat {
         .getAllTools()
         .map((tool) => new AdkToolAdapter(tool as AnyDeclarativeTool));
 
+      const agentRegistry = this.config.getAgentRegistry();
+      const subAgents = agentRegistry
+        .getAllDefinitions()
+        .map((def) => createAdkAgent(this.config, def, toolRegistry));
+
       this.agent = new LlmAgent({
         name: this.appName,
         model: this.config.getModel(),
         instruction: systemInstruction as string,
         tools: adkTools,
+        subAgents,
         // The `as any` is a workaround for a type incompatibility issue.
         // This project and its dependency `@google/adk` both have a dependency
         // on `@google/genai`. Due to how node modules are resolved, TypeScript
