@@ -114,6 +114,7 @@ export interface TelemetrySettings {
 
 export interface OutputSettings {
   format?: OutputFormat;
+  verboseMode?: boolean;
 }
 
 export interface CodebaseInvestigatorSettings {
@@ -556,6 +557,7 @@ export class Config {
     this.messageBus = new MessageBus(this.policyEngine, this.debugMode);
     this.outputSettings = {
       format: params.output?.format ?? OutputFormat.TEXT,
+      verboseMode: params.output?.verboseMode ?? true,
     };
     this.retryFetchErrors = params.retryFetchErrors ?? false;
     this.disableYoloMode = params.disableYoloMode ?? false;
@@ -1339,6 +1341,10 @@ export class Config {
     return this.outputSettings?.format
       ? this.outputSettings.format
       : OutputFormat.TEXT;
+  }
+
+  getVerboseMode(): boolean {
+    return this.outputSettings?.verboseMode ?? true;
   }
 
   getUseModelRouter(): boolean {

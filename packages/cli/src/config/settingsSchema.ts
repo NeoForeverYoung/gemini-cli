@@ -327,6 +327,16 @@ const SETTINGS_SCHEMA = {
           { value: 'json', label: 'JSON' },
         ],
       },
+      verboseMode: {
+        type: 'boolean',
+        label: 'Verbose Mode',
+        category: 'General',
+        requiresRestart: false,
+        default: true,
+        description:
+          'Enable verbose responses with detailed explanations. When disabled, responses will be more concise and brief.',
+        showInDialog: true,
+      },
     },
   },
 

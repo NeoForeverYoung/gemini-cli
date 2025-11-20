@@ -48,6 +48,7 @@ describe('Core System Prompt (prompts.ts)', () => {
         getAllToolNames: vi.fn().mockReturnValue([]),
       }),
       getEnableShellOutputEfficiency: vi.fn().mockReturnValue(true),
+      getVerboseMode: vi.fn().mockReturnValue(true),
       storage: {
         getProjectTempDir: vi.fn().mockReturnValue('/tmp/project-temp'),
       },
@@ -128,6 +129,7 @@ describe('Core System Prompt (prompts.ts)', () => {
           getAllToolNames: vi.fn().mockReturnValue(toolNames),
         }),
         getEnableShellOutputEfficiency: vi.fn().mockReturnValue(true),
+        getVerboseMode: vi.fn().mockReturnValue(true),
         storage: {
           getProjectTempDir: vi.fn().mockReturnValue('/tmp/project-temp'),
         },
