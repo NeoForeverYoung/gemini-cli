@@ -116,4 +116,70 @@ describe('extension reloading', () => {
       await rig.cleanup();
     },
   );
+
+  it('does not reload extensions when experimental.extensionReloading is false', async () => {
+    const server = new TestMcpServer();
+    const port = await server.start({
+      hello: () => ({ content: [{ type: 'text', text: 'world' }] }),
+    });
+    const extension = {
+      name: 'test-extension-no-reload',
+      version: '0.0.1',
+      mcpServers: {
+        'test-server': {
+          httpUrl: `http://localhost:${port}/mcp`,
+        },
+      },
+    };
+
+    const rig = new TestRig();
+    rig.setup('extension no reload test', {
+      settings: {
+        experimental: { extensionReloading: false }, // Set to false
+      },
+    });
+    const testServerPath = join(rig.testDir!, 'gemini-extension.json');
+    writeFileSync(testServerPath, safeJsonStringify(extension, 2));
+
+    try {
+      await rig.runCommand([
+        'extensions',
+        'uninstall',
+        'test-extension-no-reload',
+      ]);
+    } catch {
+      /* empty */
+    }
+
+    const installResult = await rig.runCommand(
+      ['extensions', 'install', `${rig.testDir!}`],
+      { stdin: 'y\n' },
+    );
+    expect(installResult).toContain('test-extension-no-reload');
+
+    const run = await rig.runInteractive('--debug');
+
+    // Try to disable the extension, it should not be possible
+    await run.sendText('/extensions disable test-extension-no-reload');
+    await run.type('\r');
+    await run.expectText(
+      'Cannot disable extension. Extension reloading is not enabled.',
+    ); // Expect an error message
+
+    // Verify the extension is still active
+    await run.sendText('/extensions list');
+    await run.type('\r');
+    await run.expectText('test-extension-no-reload (v0.0.1) - active');
+
+    await run.sendText('/quit');
+    await run.sendKeys('\r');
+
+    await server.stop();
+    await rig.runCommand([
+      'extensions',
+      'uninstall',
+      'test-extension-no-reload',
+    ]);
+    await rig.cleanup();
+  });
 });

@@ -137,7 +137,7 @@ export abstract class ExtensionLoader {
   protected maybeStartExtension(
     extension: GeminiCLIExtension,
   ): Promise<void> | undefined {
-    if (this.config && this.config.getEnableExtensionReloading()) {
+    if (this.config?.getEnableExtensionReloading()) {
       return this.startExtension(extension);
     }
     return;
@@ -195,7 +195,7 @@ export abstract class ExtensionLoader {
   protected maybeStopExtension(
     extension: GeminiCLIExtension,
   ): Promise<void> | undefined {
-    if (this.config && this.config.getEnableExtensionReloading()) {
+    if (this.config?.getEnableExtensionReloading()) {
       return this.stopExtension(extension);
     }
     return;

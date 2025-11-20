@@ -647,11 +647,9 @@ export class ExtensionManager extends ExtensionLoader {
       this.telemetryConfig,
       new ExtensionDisableEvent(hashValue(name), extension.id, scope),
     );
-    if (!this.config || this.config.getEnableExtensionReloading()) {
-      // Only toggle the isActive state if we are actually going to disable it
-      // in the current session, or we haven't been initialized yet.
-      extension.isActive = false;
-    }
+    // Only toggle the isActive state if we are actually going to disable it
+    // in the current session, or we haven't been initialized yet.
+    extension.isActive = false;
     await this.maybeStopExtension(extension);
   }
 
@@ -682,11 +680,9 @@ export class ExtensionManager extends ExtensionLoader {
       this.telemetryConfig,
       new ExtensionEnableEvent(hashValue(name), extension.id, scope),
     );
-    if (!this.config || this.config.getEnableExtensionReloading()) {
-      // Only toggle the isActive state if we are actually going to disable it
-      // in the current session, or we haven't been initialized yet.
-      extension.isActive = true;
-    }
+    // Only toggle the isActive state if we are actually going to disable it
+    // in the current session, or we haven't been initialized yet.
+    extension.isActive = true;
     await this.maybeStartExtension(extension);
   }
 }

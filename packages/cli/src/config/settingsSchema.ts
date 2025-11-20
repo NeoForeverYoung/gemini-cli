@@ -1276,7 +1276,7 @@ const SETTINGS_SCHEMA = {
         label: 'Extension Reloading',
         category: 'Experimental',
         requiresRestart: true,
-        default: false,
+        default: true,
         description:
           'Enables extension loading/unloading within the CLI session.',
         showInDialog: false,

@@ -4,8 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { debugLogger, listExtensions } from '@google/gemini-cli-core';
-import type { ExtensionUpdateInfo } from '../../config/extension.js';
+import {
+  debugLogger,
+  listExtensions,
+  type ExtensionInstallMetadata,
+} from '@google/gemini-cli-core';
+import type { ExtensionUpdateInfo , ExtensionConfig } from '../../config/extension.js';
 import { getErrorMessage } from '../../utils/errors.js';
 import {
   emptyIcon,
@@ -23,6 +27,23 @@ import process from 'node:process';
 import { ExtensionManager } from '../../config/extension-manager.js';
 import { SettingScope } from '../../config/settings.js';
 import { theme } from '../semantic-colors.js';
+import { stat, access, cp, mkdir, readdir, writeFile } from 'node:fs/promises';
+import { join, dirname, basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import semver from 'semver';
+import * as fs from 'node:fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const EXAMPLES_PATH = join(
+  __dirname,
+  '..',
+  '..',
+  'commands',
+  'extensions',
+  'examples',
+);
 
 async function listAction(context: CommandContext) {
   const historyItem: HistoryItemExtensionsList = {
@@ -394,6 +415,365 @@ async function enableAction(context: CommandContext, args: string) {
   }
 }
 
+async function pathExists(path: string) {
+  try {
+    await access(path);
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
+
+async function createDirectory(path: string) {
+  if (await pathExists(path)) {
+    throw new Error(`Path already exists: ${path}`);
+  }
+  await mkdir(path, { recursive: true });
+}
+
+async function copyDirectory(template: string, path: string) {
+  await createDirectory(path);
+
+  const examplePath = join(EXAMPLES_PATH, template);
+  const entries = await readdir(examplePath, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = join(examplePath, entry.name);
+    const destPath = join(path, entry.name);
+    await cp(srcPath, destPath, { recursive: true });
+  }
+}
+
+async function newAction(context: CommandContext, args: string) {
+  const [path, template] = args.split(' ').filter(Boolean);
+  if (!path) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: 'Usage: /extensions new <path> [template]',
+      },
+      Date.now(),
+    );
+    return;
+  }
+
+  try {
+    if (template) {
+      await copyDirectory(template, path);
+      context.ui.addItem(
+        {
+          type: MessageType.INFO,
+          text: `Successfully created new extension from template "${template}" at ${path}.`,
+        },
+        Date.now(),
+      );
+    } else {
+      await createDirectory(path);
+      const extensionName = basename(path);
+      const manifest = {
+        name: extensionName,
+        version: '1.0.0',
+      };
+      await writeFile(
+        join(path, 'gemini-extension.json'),
+        JSON.stringify(manifest, null, 2),
+      );
+      context.ui.addItem(
+        {
+          type: MessageType.INFO,
+          text: `Successfully created new extension at ${path}.`,
+        },
+        Date.now(),
+      );
+    }
+    context.ui.addItem(
+      {
+        type: MessageType.INFO,
+        text: `You can install this using "gemini extensions link ${path}" to test it out.`,
+      },
+      Date.now(),
+    );
+  } catch (error) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: getErrorMessage(error),
+      },
+      Date.now(),
+    );
+  }
+}
+
+async function validateAction(context: CommandContext, args: string) {
+  const path = args.trim();
+  if (!path) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: 'Usage: /extensions validate <path>',
+      },
+      Date.now(),
+    );
+    return;
+  }
+
+  try {
+    const extensionLoader = context.services.config?.getExtensionLoader();
+    if (!(extensionLoader instanceof ExtensionManager)) {
+      debugLogger.error('Cannot validate extensions in this environment');
+      return;
+    }
+
+    const absoluteInputPath = join(process.cwd(), path);
+    const extensionConfig: ExtensionConfig =
+      extensionLoader.loadExtensionConfig(absoluteInputPath);
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    if (extensionConfig.contextFileName) {
+      const contextFileNames = Array.isArray(extensionConfig.contextFileName)
+        ? extensionConfig.contextFileName
+        : [extensionConfig.contextFileName];
+
+      const missingContextFiles: string[] = [];
+      for (const contextFilePath of contextFileNames) {
+        const contextFileAbsolutePath = join(
+          absoluteInputPath,
+          contextFilePath,
+        );
+        if (!fs.existsSync(contextFileAbsolutePath)) {
+          missingContextFiles.push(contextFilePath);
+        }
+      }
+      if (missingContextFiles.length > 0) {
+        errors.push(
+          `The following context files referenced in gemini-extension.json are missing: ${missingContextFiles}`,
+        );
+      }
+    }
+
+    if (!semver.valid(extensionConfig.version)) {
+      warnings.push(
+        `Warning: Version '${extensionConfig.version}' does not appear to be standard semver (e.g., 1.0.0).`,
+      );
+    }
+
+    if (warnings.length > 0) {
+      for (const warning of warnings) {
+        context.ui.addItem(
+          {
+            type: MessageType.WARNING,
+            text: warning,
+          },
+          Date.now(),
+        );
+      }
+    }
+
+    if (errors.length > 0) {
+      for (const error of errors) {
+        context.ui.addItem(
+          {
+            type: MessageType.ERROR,
+            text: error,
+          },
+          Date.now(),
+        );
+      }
+      throw new Error('Extension validation failed.');
+    }
+    context.ui.addItem(
+      {
+        type: MessageType.INFO,
+        text: `Extension ${path} has been successfully validated.`,
+      },
+      Date.now(),
+    );
+  } catch (error) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: getErrorMessage(error),
+      },
+      Date.now(),
+    );
+  }
+}
+
+async function uninstallAction(context: CommandContext, args: string) {
+  const extensionLoader = context.services.config?.getExtensionLoader();
+  if (!(extensionLoader instanceof ExtensionManager)) {
+    debugLogger.error('Cannot uninstall extensions in this environment');
+    return;
+  }
+  const names = args.split(' ').filter((value) => value.length > 0);
+  if (names.length === 0) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: 'Usage: /extensions uninstall <extension-names...>',
+      },
+      Date.now(),
+    );
+    return;
+  }
+
+  const errors: Array<{ name: string; error: string }> = [];
+  for (const name of [...new Set(names)]) {
+    try {
+      await extensionLoader.uninstallExtension(name, false);
+      context.ui.addItem(
+        {
+          type: MessageType.INFO,
+          text: `Extension "${name}" successfully uninstalled.`,
+        },
+        Date.now(),
+      );
+    } catch (error) {
+      errors.push({ name, error: getErrorMessage(error) });
+    }
+  }
+
+  if (errors.length > 0) {
+    for (const { name, error } of errors) {
+      context.ui.addItem(
+        {
+          type: MessageType.ERROR,
+          text: `Failed to uninstall "${name}": ${error}`,
+        },
+        Date.now(),
+      );
+    }
+  }
+}
+
+async function installAction(context: CommandContext, args: string) {
+  const extensionLoader = context.services.config?.getExtensionLoader();
+  if (!(extensionLoader instanceof ExtensionManager)) {
+    debugLogger.error('Cannot install extensions in this environment');
+    return;
+  }
+
+  // This is a very basic arg parser.
+  const source = args.split(' ')[0];
+  if (!source) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: 'Usage: /extensions install <source>',
+      },
+      Date.now(),
+    );
+    return;
+  }
+
+  try {
+    let installMetadata: ExtensionInstallMetadata;
+    if (
+      source.startsWith('http://') ||
+      source.startsWith('https://') ||
+      source.startsWith('git@') ||
+      source.startsWith('sso://')
+    ) {
+      installMetadata = {
+        source,
+        type: 'git',
+        // TODO: support other args
+      };
+    } else {
+      try {
+        await stat(source);
+        installMetadata = {
+          source,
+          type: 'local',
+        };
+      } catch {
+        throw new Error('Install source not found.');
+      }
+    }
+
+    context.ui.addItem(
+      {
+        type: MessageType.INFO,
+        text: `Installing extension from ${source}...`,
+      },
+      Date.now(),
+    );
+
+    const extension =
+      await extensionLoader.installOrUpdateExtension(installMetadata);
+
+    context.ui.addItem(
+      {
+        type: MessageType.INFO,
+        text: `Extension "${extension.name}" installed successfully and enabled.`,
+      },
+      Date.now(),
+    );
+  } catch (error) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: getErrorMessage(error),
+      },
+      Date.now(),
+    );
+  }
+}
+
+async function linkAction(context: CommandContext, args: string) {
+  const extensionLoader = context.services.config?.getExtensionLoader();
+  if (!(extensionLoader instanceof ExtensionManager)) {
+    debugLogger.error('Cannot link extensions in this environment');
+    return;
+  }
+
+  const path = args.trim();
+  if (!path) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: 'Usage: /extensions link <path>',
+      },
+      Date.now(),
+    );
+    return;
+  }
+
+  try {
+    const installMetadata: ExtensionInstallMetadata = {
+      source: path,
+      type: 'link',
+    };
+
+    context.ui.addItem(
+      {
+        type: MessageType.INFO,
+        text: `Linking extension from ${path}...`,
+      },
+      Date.now(),
+    );
+
+    const extension =
+      await extensionLoader.installOrUpdateExtension(installMetadata);
+
+    context.ui.addItem(
+      {
+        type: MessageType.INFO,
+        text: `Extension "${extension.name}" linked successfully and enabled.`,
+      },
+      Date.now(),
+    );
+  } catch (error) {
+    context.ui.addItem(
+      {
+        type: MessageType.ERROR,
+        text: getErrorMessage(error),
+      },
+      Date.now(),
+    );
+  }
+}
+
 /**
  * Exported for testing.
  */
@@ -481,6 +861,44 @@ const restartCommand: SlashCommand = {
   completion: completeExtensions,
 };
 
+const installCommand: SlashCommand = {
+  name: 'install',
+  description:
+    'Installs an extension from a git repository URL or a local path',
+  kind: CommandKind.BUILT_IN,
+  action: installAction,
+};
+
+const linkCommand: SlashCommand = {
+  name: 'link',
+  description:
+    'Links an extension from a local path. Updates made to the local path will always be reflected.',
+  kind: CommandKind.BUILT_IN,
+  action: linkAction,
+};
+
+const newCommand: SlashCommand = {
+  name: 'new',
+  description: 'Create a new extension from a boilerplate example.',
+  kind: CommandKind.BUILT_IN,
+  action: newAction,
+};
+
+const uninstallCommand: SlashCommand = {
+  name: 'uninstall',
+  description: 'Uninstalls one or more extensions.',
+  kind: CommandKind.BUILT_IN,
+  action: uninstallAction,
+  completion: completeExtensions,
+};
+
+const validateCommand: SlashCommand = {
+  name: 'validate',
+  description: 'Validates an extension from a local path.',
+  kind: CommandKind.BUILT_IN,
+  action: validateAction,
+};
+
 export function extensionsCommand(
   enableExtensionReloading?: boolean,
 ): SlashCommand {
@@ -496,6 +914,11 @@ export function extensionsCommand(
       updateExtensionsCommand,
       exploreExtensionsCommand,
       restartCommand,
+      installCommand,
+      linkCommand,
+      newCommand,
+      uninstallCommand,
+      validateCommand,
       ...conditionalCommands,
     ],
     action: (context, args) =>
