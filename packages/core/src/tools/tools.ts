@@ -145,6 +145,8 @@ export abstract class BaseToolInvocation<
   protected getMessageBusDecision(
     abortSignal: AbortSignal,
   ): Promise<'ALLOW' | 'DENY' | 'ASK_USER'> {
+    // TODO: handle ADK mode flag. We need the config somehow.
+    return Promise.resolve('ASK_USER');
     if (!this.messageBus) {
       // If there's no message bus, we can't make a decision, so we allow.
       // The legacy confirmation flow will still apply if the tool needs it.
