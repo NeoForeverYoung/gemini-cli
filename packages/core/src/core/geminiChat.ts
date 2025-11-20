@@ -10,10 +10,10 @@
 import type {
   GenerateContentResponse,
   Content,
-  GenerateContentConfig,
-  SendMessageParameters,
   Part,
   Tool,
+  PartListUnion,
+  GenerateContentConfig,
 } from '@google/genai';
 import { toParts } from '../code_assist/converter.js';
 import { createUserContent, FinishReason } from '@google/genai';
@@ -36,7 +36,6 @@ import {
   createEvent,
   type Session,
 } from '@google/adk';
-import type { ToolRegistry } from '../tools/tool-registry.js';
 import type { CompletedToolCall } from './coreToolScheduler.js';
 import {
   logContentRetry,
@@ -57,6 +56,7 @@ import { partListUnionToString } from './geminiRequest.js';
 import * as os from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { createAdkAgent } from '../agents/adk-factory.js';
+import type { ModelConfigKey } from '../services/modelConfigService.js';
 
 export enum StreamEventType {
   /** A regular content chunk from the API. */
@@ -224,8 +224,8 @@ export class GeminiChat {
 
   constructor(
     private readonly config: Config,
-    private readonly generationConfig: GenerateContentConfig = {},
-    toolRegistry: ToolRegistry,
+    private systemInstruction: string = '',
+    private tools: Tool[] = [],
     private history: Content[] = [],
     resumedSessionData?: ResumedSessionData,
   ) {
@@ -233,13 +233,19 @@ export class GeminiChat {
 
     if (this.adkMode) {
       console.log('ADK MODE IS ON');
+      const { generateContentConfig } =
+        this.config.modelConfigService.getResolvedConfig({
+          model: this.config.getModel(),
+        });
+
       // We need to pop off a bunch of attrs that LlmAgent isn't expecting
       const {
         tools: _tools, // This is really a list of functionDeclarations
         systemInstruction,
         ...adkGenerationConfig
-      } = this.generationConfig;
+      } = generateContentConfig;
 
+      const toolRegistry = this.config.getToolRegistry();
       const adkTools = toolRegistry
         .getAllTools()
         .map((tool) => new DeclarativeToAdkAdapter(tool as AnyDeclarativeTool));
@@ -314,7 +320,7 @@ export class GeminiChat {
   }
 
   setSystemInstruction(sysInstr: string) {
-    this.generationConfig.systemInstruction = sysInstr;
+    this.systemInstruction = sysInstr;
     if (this.adkMode) {
       this.agent!.instruction = sysInstr;
     }
@@ -328,7 +334,10 @@ export class GeminiChat {
    * sending the next message.
    *
    * @see {@link Chat#sendMessage} for non-streaming method.
-   * @param params - parameters for sending the message.
+   * @param modelConfigKey - The key for the model config.
+   * @param message - The list of messages to send.
+   * @param prompt_id - The ID of the prompt.
+   * @param signal - An abort signal for this message.
    * @return The model's response.
    *
    * @example
@@ -343,9 +352,10 @@ export class GeminiChat {
    * ```
    */
   async sendMessageStream(
-    model: string,
-    params: SendMessageParameters,
+    modelConfigKey: ModelConfigKey,
+    message: PartListUnion,
     prompt_id: string,
+    signal: AbortSignal,
   ): Promise<AsyncGenerator<StreamEvent>> {
     await this.sendPromise;
 
@@ -363,14 +373,15 @@ export class GeminiChat {
     });
     this.sendPromise = streamDonePromise;
 
-    const userContent = createUserContent(params.message);
+    const userContent = createUserContent(message);
+    const { model, generateContentConfig } =
+      this.config.modelConfigService.getResolvedConfig(modelConfigKey);
+    generateContentConfig.abortSignal = signal;
 
     // Record user input - capture complete message with all parts (text, files, images, etc.)
     // but skip recording function responses (tool call results) as they should be stored in tool call records
     if (!isFunctionResponse(userContent)) {
-      const userMessage = Array.isArray(params.message)
-        ? params.message
-        : [params.message];
+      const userMessage = Array.isArray(message) ? message : [message];
       const userMessageContent = partListUnionToString(toParts(userMessage));
       this.chatRecordingService.recordMessage({
         model,
@@ -406,18 +417,14 @@ export class GeminiChat {
             }
 
             // If this is a retry, set temperature to 1 to encourage different output.
-            const currentParams = { ...params };
             if (attempt > 0) {
-              currentParams.config = {
-                ...currentParams.config,
-                temperature: 1,
-              };
+              generateContentConfig.temperature = 1;
             }
 
             const stream = await self.makeApiCallAndProcessStream(
               model,
+              generateContentConfig,
               requestContents,
-              currentParams,
               prompt_id,
               userContent,
             );
@@ -491,8 +498,8 @@ export class GeminiChat {
 
   private async makeApiCallAndProcessStream(
     model: string,
+    generateContentConfig: GenerateContentConfig,
     requestContents: Content[],
-    params: SendMessageParameters,
     prompt_id: string,
     userContent: Content,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
@@ -528,7 +535,13 @@ export class GeminiChat {
               modelToUse === PREVIEW_GEMINI_MODEL
                 ? contentsForPreviewModel
                 : requestContents,
-            config: { ...this.generationConfig, ...params.config },
+            config: {
+              ...generateContentConfig,
+              // TODO(12622): Ensure we don't overrwrite these when they are
+              // passed via config.
+              systemInstruction: this.systemInstruction,
+              tools: this.tools,
+            },
           },
           prompt_id,
         );
@@ -544,7 +557,7 @@ export class GeminiChat {
       onPersistent429: onPersistent429Callback,
       authType: this.config.getContentGeneratorConfig()?.authType,
       retryFetchErrors: this.config.getRetryFetchErrors(),
-      signal: params.config?.abortSignal,
+      signal: generateContentConfig.abortSignal,
       maxAttempts:
         this.config.isPreviewModelFallbackMode() &&
         model === PREVIEW_GEMINI_MODEL
@@ -736,7 +749,7 @@ export class GeminiChat {
   }
 
   setTools(tools: Tool[]): void {
-    this.generationConfig.tools = tools;
+    this.tools = tools;
     if (this.adkMode) {
       this.agent!.tools =
         tools?.flatMap(

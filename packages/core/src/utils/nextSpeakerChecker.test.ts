@@ -13,7 +13,6 @@ import type { Config } from '../config/config.js';
 import type { NextSpeakerResponse } from './nextSpeakerChecker.js';
 import { checkNextSpeaker } from './nextSpeakerChecker.js';
 import { GeminiChat } from '../core/geminiChat.js';
-import { ToolRegistry } from '../tools/tool-registry.js';
 
 // Mock fs module to prevent actual file system operations during tests
 const mockFileSystem = new Map<string, string>();
@@ -80,14 +79,11 @@ describe('checkNextSpeaker', () => {
       } as ContentGenerator,
       mockConfig,
     );
-
-    const toolRegistry = new ToolRegistry(mockConfig);
-
     // GeminiChat will receive the mocked instances via the mocked GoogleGenAI constructor
     chatInstance = new GeminiChat(
       mockConfig,
-      {},
-      toolRegistry,
+      '', // empty system instruction
+      [], // no tools
       [], // initial history
     );
 

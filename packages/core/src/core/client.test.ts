@@ -15,7 +15,7 @@ import {
 } from 'vitest';
 
 import type { Content, GenerateContentResponse, Part } from '@google/genai';
-import { isThinkingSupported, GeminiClient } from './client.js';
+import { GeminiClient } from './client.js';
 import {
   AuthType,
   type ContentGenerator,
@@ -133,25 +133,6 @@ async function fromAsync<T>(promise: AsyncGenerator<T>): Promise<readonly T[]> {
   }
   return results;
 }
-
-describe('isThinkingSupported', () => {
-  it('should return true for gemini-2.5', () => {
-    expect(isThinkingSupported('gemini-2.5')).toBe(true);
-  });
-
-  it('should return true for gemini-2.5-pro', () => {
-    expect(isThinkingSupported('gemini-2.5-pro')).toBe(true);
-  });
-
-  it('should return true for gemini-3-pro', () => {
-    expect(isThinkingSupported('gemini-3-pro')).toBe(true);
-  });
-
-  it('should return false for other models', () => {
-    expect(isThinkingSupported('gemini-1.5-flash')).toBe(false);
-    expect(isThinkingSupported('some-other-model')).toBe(false);
-  });
-});
 
 describe('Gemini Client (client.ts)', () => {
   let mockContentGenerator: ContentGenerator;
@@ -763,14 +744,10 @@ ${JSON.stringify(
 
       // Assert
       expect(ideContextStore.get).toHaveBeenCalled();
-      // The `turn.run` method is now called with the model name as the first
-      // argument. We use `expect.any(String)` because this test is
-      // concerned with the IDE context logic, not the model routing,
-      // which is tested in its own dedicated suite.
       expect(mockTurnRunFn).toHaveBeenCalledWith(
-        expect.any(String),
+        { model: 'default-routed-model' },
         initialRequest,
-        expect.any(Object),
+        expect.any(AbortSignal),
       );
     });
 
@@ -1299,9 +1276,9 @@ ${JSON.stringify(
         expect(mockConfig.getModelRouterService).toHaveBeenCalled();
         expect(mockRouterService.route).toHaveBeenCalled();
         expect(mockTurnRunFn).toHaveBeenCalledWith(
-          'routed-model', // The model from the router
+          { model: 'routed-model' },
           [{ text: 'Hi' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
       });
 
@@ -1316,9 +1293,9 @@ ${JSON.stringify(
 
         expect(mockRouterService.route).toHaveBeenCalledTimes(1);
         expect(mockTurnRunFn).toHaveBeenCalledWith(
-          'routed-model',
+          { model: 'routed-model' },
           [{ text: 'Hi' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
 
         // Second turn
@@ -1333,9 +1310,9 @@ ${JSON.stringify(
         expect(mockRouterService.route).toHaveBeenCalledTimes(1);
         // Should stick to the first model
         expect(mockTurnRunFn).toHaveBeenCalledWith(
-          'routed-model',
+          { model: 'routed-model' },
           [{ text: 'Continue' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
       });
 
@@ -1350,9 +1327,9 @@ ${JSON.stringify(
 
         expect(mockRouterService.route).toHaveBeenCalledTimes(1);
         expect(mockTurnRunFn).toHaveBeenCalledWith(
-          'routed-model',
+          { model: 'routed-model' },
           [{ text: 'Hi' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
 
         // New prompt
@@ -1371,9 +1348,9 @@ ${JSON.stringify(
         expect(mockRouterService.route).toHaveBeenCalledTimes(2);
         // Should use the newly routed model
         expect(mockTurnRunFn).toHaveBeenCalledWith(
-          'new-routed-model',
+          { model: 'new-routed-model' },
           [{ text: 'A new topic' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
       });
 
@@ -1392,9 +1369,9 @@ ${JSON.stringify(
         await fromAsync(stream);
 
         expect(mockTurnRunFn).toHaveBeenCalledWith(
-          DEFAULT_GEMINI_FLASH_MODEL,
+          { model: DEFAULT_GEMINI_FLASH_MODEL },
           [{ text: 'Hi' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
       });
 
@@ -1414,9 +1391,9 @@ ${JSON.stringify(
 
         // First call should use fallback model
         expect(mockTurnRunFn).toHaveBeenCalledWith(
-          DEFAULT_GEMINI_FLASH_MODEL,
+          { model: DEFAULT_GEMINI_FLASH_MODEL },
           [{ text: 'Hi' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
 
         // End fallback mode
@@ -1433,9 +1410,9 @@ ${JSON.stringify(
         // Router should still not be called, and it should stick to the fallback model
         expect(mockTurnRunFn).toHaveBeenCalledTimes(2); // Ensure it was called again
         expect(mockTurnRunFn).toHaveBeenLastCalledWith(
-          DEFAULT_GEMINI_FLASH_MODEL, // Still the fallback model
+          { model: DEFAULT_GEMINI_FLASH_MODEL }, // Still the fallback model
           [{ text: 'Continue' }],
-          expect.any(Object),
+          expect.any(AbortSignal),
         );
       });
     });
@@ -1484,17 +1461,17 @@ ${JSON.stringify(
       // First call with original request
       expect(mockTurnRunFn).toHaveBeenNthCalledWith(
         1,
-        expect.any(String),
+        { model: 'default-routed-model' },
         initialRequest,
-        expect.any(Object),
+        expect.any(AbortSignal),
       );
 
       // Second call with "Please continue."
       expect(mockTurnRunFn).toHaveBeenNthCalledWith(
         2,
-        expect.any(String),
+        { model: 'default-routed-model' },
         [{ text: 'System: Please continue.' }],
-        expect.any(Object),
+        expect.any(AbortSignal),
       );
     });
 
@@ -2267,7 +2244,7 @@ ${JSON.stringify(
         .mockReturnValueOnce(true);
 
       let capturedSignal: AbortSignal;
-      mockTurnRunFn.mockImplementation((model, request, signal) => {
+      mockTurnRunFn.mockImplementation((_modelConfigKey, _request, signal) => {
         capturedSignal = signal;
         return (async function* () {
           yield { type: 'content', value: 'First event' };
