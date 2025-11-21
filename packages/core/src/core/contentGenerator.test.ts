@@ -18,6 +18,7 @@ import { LoggingContentGenerator } from './loggingContentGenerator.js';
 import { loadApiKey } from './apiKeyCredentialStorage.js';
 import { FakeContentGenerator } from './fakeContentGenerator.js';
 import { RecordingContentGenerator } from './recordingContentGenerator.js';
+import { determineSurface } from '../utils/surface.js';
 
 vi.mock('../code_assist/codeAssist.js');
 vi.mock('@google/genai');
@@ -26,6 +27,8 @@ vi.mock('./apiKeyCredentialStorage.js', () => ({
 }));
 
 vi.mock('./fakeContentGenerator.js');
+
+vi.mock('../utils/surface.js');
 
 const mockConfig = {} as unknown as Config;
 
@@ -110,6 +113,7 @@ describe('createContentGenerator', () => {
       models: {},
     } as unknown as GoogleGenAI;
     vi.mocked(GoogleGenAI).mockImplementation(() => mockGenerator as never);
+    vi.mocked(determineSurface).mockReturnValue('test-surface');
     const generator = await createContentGenerator(
       {
         apiKey: 'test-api-key',
@@ -122,7 +126,7 @@ describe('createContentGenerator', () => {
       vertexai: undefined,
       httpOptions: {
         headers: {
-          'User-Agent': expect.any(String),
+          'User-Agent': expect.stringContaining('host=test-surface'),
           'x-gemini-api-privileged-user-id': expect.any(String),
         },
       },
@@ -143,6 +147,7 @@ describe('createContentGenerator', () => {
       models: {},
     } as unknown as GoogleGenAI;
     vi.mocked(GoogleGenAI).mockImplementation(() => mockGenerator as never);
+    vi.mocked(determineSurface).mockReturnValue('test-surface');
     const generator = await createContentGenerator(
       {
         apiKey: 'test-api-key',
@@ -155,7 +160,7 @@ describe('createContentGenerator', () => {
       vertexai: undefined,
       httpOptions: {
         headers: {
-          'User-Agent': expect.any(String),
+          'User-Agent': expect.stringContaining('host=test-surface'),
         },
       },
     });

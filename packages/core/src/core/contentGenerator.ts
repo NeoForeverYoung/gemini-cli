@@ -20,6 +20,7 @@ import { loadApiKey } from './apiKeyCredentialStorage.js';
 import type { UserTierId } from '../code_assist/types.js';
 import { LoggingContentGenerator } from './loggingContentGenerator.js';
 import { InstallationManager } from '../utils/installationManager.js';
+import { determineSurface } from '../utils/surface.js';
 import { FakeContentGenerator } from './fakeContentGenerator.js';
 import { RecordingContentGenerator } from './recordingContentGenerator.js';
 
@@ -115,7 +116,8 @@ export async function createContentGenerator(
       return FakeContentGenerator.fromFile(gcConfig.fakeResponses);
     }
     const version = process.env['CLI_VERSION'] || process.version;
-    const userAgent = `GeminiCLI/${version} (${process.platform}; ${process.arch})`;
+    const surface = determineSurface();
+    const userAgent = `GeminiCLI/${version} (${process.platform}; ${process.arch}; host=${surface})`;
     const baseHeaders: Record<string, string> = {
       'User-Agent': userAgent,
     };
