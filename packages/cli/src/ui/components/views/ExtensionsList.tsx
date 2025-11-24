@@ -8,13 +8,16 @@ import type React from 'react';
 import { Box, Text } from 'ink';
 import { useUIState } from '../../contexts/UIStateContext.js';
 import { ExtensionUpdateState } from '../../state/extensions.js';
-import { debugLogger, type GeminiCLIExtension } from '@google/gemini-cli-core';
+import { debugLogger } from '@google/gemini-cli-core';
+import { type ExtensionInfoForList } from '../../types.js';
 
-interface ExtensionsList {
-  extensions: readonly GeminiCLIExtension[];
+interface ExtensionsListProps {
+  extensions: readonly ExtensionInfoForList[];
 }
 
-export const ExtensionsList: React.FC<ExtensionsList> = ({ extensions }) => {
+export const ExtensionsList: React.FC<ExtensionsListProps> = ({
+  extensions,
+}) => {
   const { extensionsUpdateState } = useUIState();
 
   if (extensions.length === 0) {
@@ -59,12 +62,42 @@ export const ExtensionsList: React.FC<ExtensionsList> = ({ extensions }) => {
           }
 
           return (
-            <Box key={ext.name}>
-              <Text>
-                <Text color="cyan">{`${ext.name} (v${ext.version})`}</Text>
-                <Text color={activeColor}>{` - ${activeString}`}</Text>
-                {<Text color={stateColor}>{` (${stateText})`}</Text>}
-              </Text>
+            <Box key={ext.name} flexDirection="column" marginBottom={1}>
+              <Box>
+                <Text>
+                  <Text color="cyan">{`${ext.name} (v${ext.version})`}</Text>
+                  <Text color={activeColor}>{` - ${activeString}`}</Text>
+                  {<Text color={stateColor}>{` (${stateText})`}</Text>}
+                </Text>
+              </Box>
+              {ext.settings && ext.settings.length > 0 && (
+                <Box flexDirection="column" paddingLeft={2}>
+                  <Text bold>Settings:</Text>
+                  {ext.settings.map((setting) => (
+                    <Box
+                      key={setting.envVar}
+                      flexDirection="column"
+                      paddingLeft={2}
+                    >
+                      <Text>
+                        <Text bold>{setting.name}</Text> ({setting.envVar})
+                      </Text>
+                      <Box paddingLeft={2}>
+                        <Text>{setting.description}</Text>
+                      </Box>
+                      <Box paddingLeft={2}>
+                        <Text>
+                          Value:{' '}
+                          <Text color="yellow">
+                            {setting.value ?? 'not set'}
+                          </Text>
+                          {setting.scope && ` (${setting.scope})`}
+                        </Text>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
           );
         })}

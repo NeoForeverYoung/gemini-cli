@@ -15,6 +15,7 @@ import type {
 } from '@google/gemini-cli-core';
 import type { PartListUnion } from '@google/genai';
 import { type ReactNode } from 'react';
+import type { ExtensionSettingWithValue } from '../config/extensions/extensionSettings.js';
 
 export type { ThoughtSummary };
 
@@ -177,9 +178,13 @@ export type HistoryItemCompression = HistoryItemBase & {
   compression: CompressionProps;
 };
 
+export interface ExtensionInfoForList extends GeminiCLIExtension {
+  settings?: ExtensionSettingWithValue[];
+}
+
 export type HistoryItemExtensionsList = HistoryItemBase & {
   type: 'extensions_list';
-  extensions: GeminiCLIExtension[];
+  extensions: ExtensionInfoForList[];
 };
 
 export interface ChatDetail {

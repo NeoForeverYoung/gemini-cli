@@ -250,6 +250,54 @@ export async function updateSetting(
   await fs.writeFile(envFilePath, envContent);
 }
 
+export interface ExtensionSettingWithValue extends ExtensionSetting {
+  value?: string;
+  scope?: ExtensionSettingScope;
+}
+
+export async function getSettingsWithValues(
+  extensionConfig: ExtensionConfig,
+  extensionId: string,
+): Promise<ExtensionSettingWithValue[]> {
+  if (!extensionConfig.settings || extensionConfig.settings.length === 0) {
+    return [];
+  }
+
+  const userSettings = await getScopedEnvContents(
+    extensionConfig,
+    extensionId,
+    ExtensionSettingScope.USER,
+  );
+  const workspaceSettings = await getScopedEnvContents(
+    extensionConfig,
+    extensionId,
+    ExtensionSettingScope.WORKSPACE,
+  );
+
+  return extensionConfig.settings.map((setting) => {
+    let value: string | undefined;
+    let scope: ExtensionSettingScope | undefined;
+
+    if (workspaceSettings[setting.envVar] !== undefined) {
+      value = workspaceSettings[setting.envVar];
+      scope = ExtensionSettingScope.WORKSPACE;
+    } else if (userSettings[setting.envVar] !== undefined) {
+      value = userSettings[setting.envVar];
+      scope = ExtensionSettingScope.USER;
+    }
+
+    if (setting.sensitive && value !== undefined) {
+      value = '*****';
+    }
+
+    return {
+      ...setting,
+      value,
+      scope,
+    };
+  });
+}
+
 interface settingsChanges {
   promptForSensitive: ExtensionSetting[];
   removeSensitive: ExtensionSetting[];

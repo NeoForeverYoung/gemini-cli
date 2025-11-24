@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { debugLogger, listExtensions } from '@google/gemini-cli-core';
+import { debugLogger } from '@google/gemini-cli-core';
 import type { ExtensionUpdateInfo } from '../../config/extension.js';
 import { getErrorMessage } from '../../utils/errors.js';
 import {
@@ -12,6 +12,7 @@ import {
   MessageType,
   type HistoryItemExtensionsList,
   type HistoryItemInfo,
+  type ExtensionInfoForList,
 } from '../types.js';
 import {
   type CommandContext,
@@ -23,6 +24,7 @@ import process from 'node:process';
 import { ExtensionManager } from '../../config/extension-manager.js';
 import { SettingScope } from '../../config/settings.js';
 import { theme } from '../semantic-colors.js';
+import { getSettingsWithValues } from '../../config/extensions/extensionSettings.js';
 
 function showMessageIfNoExtensions(
   context: CommandContext,
@@ -42,23 +44,36 @@ function showMessageIfNoExtensions(
 }
 
 async function listAction(context: CommandContext) {
-  const extensions = context.services.config
-    ? listExtensions(context.services.config)
-    : [];
+  const extensionManager = context.services.config?.getExtensionLoader();
+  if (!(extensionManager instanceof ExtensionManager)) {
+    return;
+  }
+  const extensions = extensionManager.getExtensions();
 
   if (showMessageIfNoExtensions(context, extensions)) {
     return;
   }
 
+  const extensionsWithSettings: ExtensionInfoForList[] = await Promise.all(
+    extensions.map(async (ext) => {
+      const config = extensionManager.loadExtensionConfig(ext.path);
+      const settings = await getSettingsWithValues(config, ext.id);
+      return { ...ext, settings };
+    }),
+  );
+
   const historyItem: HistoryItemExtensionsList = {
     type: MessageType.EXTENSIONS_LIST,
-    extensions,
+    extensions: extensionsWithSettings,
   };
 
   context.ui.addItem(historyItem, Date.now());
 }
 
-function updateAction(context: CommandContext, args: string): Promise<void> {
+async function updateAction(
+  context: CommandContext,
+  args: string,
+): Promise<void> {
   const updateArgs = args.split(' ').filter((value) => value.length > 0);
   const all = updateArgs.length === 1 && updateArgs[0] === '--all';
   const names = all ? null : updateArgs;
@@ -79,17 +94,27 @@ function updateAction(context: CommandContext, args: string): Promise<void> {
     (resolve) => (resolveUpdateComplete = resolve),
   );
 
-  const extensions = context.services.config
-    ? listExtensions(context.services.config)
-    : [];
+  const extensionManager = context.services.config?.getExtensionLoader();
+  if (!(extensionManager instanceof ExtensionManager)) {
+    return;
+  }
+  const extensions = extensionManager.getExtensions();
 
   if (showMessageIfNoExtensions(context, extensions)) {
     return Promise.resolve();
   }
 
+  const extensionsWithSettings: ExtensionInfoForList[] = await Promise.all(
+    extensions.map(async (ext) => {
+      const config = extensionManager.loadExtensionConfig(ext.path);
+      const settings = await getSettingsWithValues(config, ext.id);
+      return { ...ext, settings };
+    }),
+  );
+
   const historyItem: HistoryItemExtensionsList = {
     type: MessageType.EXTENSIONS_LIST,
-    extensions,
+    extensions: extensionsWithSettings,
   };
 
   updateComplete.then((updateInfos) => {
@@ -121,7 +146,7 @@ function updateAction(context: CommandContext, args: string): Promise<void> {
       },
     });
     if (names?.length) {
-      const extensions = listExtensions(context.services.config!);
+      const extensions = extensionManager.getExtensions();
       for (const name of names) {
         const extension = extensions.find(
           (extension) => extension.name === name,
