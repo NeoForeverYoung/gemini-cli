@@ -5,13 +5,14 @@
  */
 
 export interface TerminalResizePayload {
+  sessionId: string;
   cols: number;
   rows: number;
 }
 
 export interface GeminiEditorResolvePayload {
   diffPath: string;
-  status: string;
+  status: 'approve' | 'reject';
   content?: string;
 }
 

@@ -14,8 +14,13 @@ const mockIpcMain = vi.hoisted(() => ({
   on: vi.fn(),
   handle: vi.fn(),
 }));
+const mockDialog = vi.hoisted(() => ({
+  showOpenDialog: vi.fn(),
+}));
+
 vi.mock('electron', () => ({
   ipcMain: mockIpcMain,
+  dialog: mockDialog,
 }));
 
 vi.mock('electron-store', () => ({
@@ -34,11 +39,17 @@ vi.mock('node:fs', () => ({
   },
 }));
 
-vi.mock('node:os', () => ({
-  default: {
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return {
+    ...actual,
     homedir: vi.fn(() => '/home/user'),
-  },
-}));
+    default: {
+      ...actual,
+      homedir: vi.fn(() => '/home/user'),
+    },
+  };
+});
 
 vi.mock('@google/gemini-cli/dist/src/config/settings.js', () => ({
   loadSettings: vi.fn().mockResolvedValue({
@@ -138,6 +149,67 @@ describe('ipc-handlers', () => {
     });
 
     expect(result).toEqual({ success: true });
+  });
+
+  it('handles dialog:open-directory', async () => {
+    registerIpcHandlers(mockWindowManager);
+
+    const openHandler = mockIpcMain.handle.mock.calls.find(
+      (call) => call[0] === 'dialog:open-directory',
+    )![1];
+
+    // Mock window manager to return a window
+    vi.mocked(mockWindowManager.getMainWindow).mockReturnValue({} as any);
+
+    // Mock dialog result
+    mockDialog.showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: ['/selected/path'],
+    });
+
+    const result = await openHandler(null);
+    expect(result).toBe('/selected/path');
+
+    // Test cancellation
+    mockDialog.showOpenDialog.mockResolvedValue({
+      canceled: true,
+      filePaths: [],
+    });
+    const resultCanceled = await openHandler(null);
+    expect(resultCanceled).toBeNull();
+  });
+
+  it('resolves paths in settings:get', async () => {
+    registerIpcHandlers(mockWindowManager);
+
+    const { loadSettings } = await import(
+      '@google/gemini-cli/dist/src/config/settings.js'
+    );
+    vi.mocked(loadSettings).mockResolvedValueOnce({
+      merged: {
+        terminalCwd: '~/Documents',
+        context: {
+          includeDirectories: ['../project', '/absolute/path'],
+        },
+      },
+      forScope: vi.fn().mockReturnValue({
+        path: '/mock/settings.json',
+        settings: {},
+      }),
+    } as any);
+
+    const getHandler = mockIpcMain.handle.mock.calls.find(
+      (call) => call[0] === 'settings:get',
+    )![1];
+
+    const result = await getHandler(null);
+    const merged = result.merged;
+
+    expect(merged.terminalCwd).toBe('/home/user/Documents');
+    expect(merged.context.includeDirectories).toEqual([
+      '/home/project', // Resolved relative to homedir
+      '/absolute/path',
+    ]);
   });
 
   it('validates settings types in settings:set', async () => {

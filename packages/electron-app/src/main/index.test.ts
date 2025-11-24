@@ -26,6 +26,11 @@ const mockSpawn = vi.fn(() => mockPtyProcess);
 
 vi.mock('@google/gemini-cli-core', () => ({
   getPty: vi.fn(),
+  GEMINI_DIR: '/mock/gemini/dir',
+  ExtensionLoader: class {
+    loadExtension = vi.fn();
+    loadExtensions = vi.fn();
+  },
 }));
 
 const mockWebContents = {
@@ -92,10 +97,44 @@ vi.mock('@google/gemini-cli/dist/src/config/settingsSchema.js', () => ({
   getSettingsSchema: vi.fn(() => ({})),
 }));
 
-vi.mock('os', () => ({
-  default: {
-    platform: vi.fn(() => 'darwin'),
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return {
+    ...actual,
     homedir: vi.fn(() => '/home/user'),
+    platform: vi.fn(() => 'darwin'),
+    default: {
+      ...actual,
+      homedir: vi.fn(() => '/home/user'),
+      platform: vi.fn(() => 'darwin'),
+    },
+  };
+});
+
+vi.mock('os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('os')>();
+  return {
+    ...actual,
+    homedir: vi.fn(() => '/home/user'),
+    platform: vi.fn(() => 'darwin'),
+    default: {
+      ...actual,
+      homedir: vi.fn(() => '/home/user'),
+      platform: vi.fn(() => 'darwin'),
+    },
+  };
+});
+
+vi.mock('node:fs/promises', () => ({
+  readdir: vi.fn().mockResolvedValue([]),
+  stat: vi.fn().mockResolvedValue({ isDirectory: () => false }),
+  readFile: vi.fn().mockResolvedValue(''),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  default: {
+    readdir: vi.fn().mockResolvedValue([]),
+    stat: vi.fn().mockResolvedValue({ isDirectory: () => false }),
+    readFile: vi.fn().mockResolvedValue(''),
+    mkdir: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -105,7 +144,14 @@ vi.mock('fs', () => ({
     watch: vi.fn(() => ({ close: vi.fn() })),
     promises: {
       mkdir: vi.fn(() => Promise.resolve()),
+      readFile: vi.fn().mockResolvedValue(''),
     },
+  },
+  existsSync: vi.fn(() => true),
+  watch: vi.fn(() => ({ close: vi.fn() })),
+  promises: {
+    mkdir: vi.fn(() => Promise.resolve()),
+    readFile: vi.fn().mockResolvedValue(''),
   },
 }));
 

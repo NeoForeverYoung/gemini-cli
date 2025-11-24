@@ -16,5 +16,8 @@ export interface CliSettings {
   theme?: string;
   customThemes?: Record<string, CustomTheme>;
   mcpServers?: unknown;
+  context?: {
+    includeDirectories?: string[];
+  };
   [key: string]: unknown;
 }

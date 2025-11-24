@@ -14,7 +14,7 @@
   "main": "out/main/index.cjs",
   "scripts": {
     "dev": "npx electron-vite dev",
-    "build": "npm run build:all --prefix ../.. && npx electron-vite build",
+    "build": "npm run build:all --prefix ../.. && npm run bundle --prefix ../.. && npx electron-vite build",
     "start": "npx electron-vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "vitest run",
@@ -35,16 +35,17 @@
     "monaco-editor": "^0.52.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
     "zod": "^3.24.1"
   },
   "optionalDependencies": {
-    "node-pty": "^1.1.0-beta34",
     "@lydell/node-pty": "1.1.0",
     "@lydell/node-pty-darwin-arm64": "1.1.0",
     "@lydell/node-pty-darwin-x64": "1.1.0",
     "@lydell/node-pty-linux-x64": "1.1.0",
     "@lydell/node-pty-win32-arm64": "1.1.0",
-    "@lydell/node-pty-win32-x64": "1.1.0"
+    "@lydell/node-pty-win32-x64": "1.1.0",
+    "node-pty": "^1.1.0-beta34"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.2",
@@ -98,6 +99,10 @@
       {
         "from": "src/resources",
         "to": "resources"
+      },
+      {
+        "from": "../../docs/changelogs",
+        "to": "docs/changelogs"
       }
     ],
     "mac": {

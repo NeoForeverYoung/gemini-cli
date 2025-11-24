@@ -20,19 +20,18 @@ interface WindowBounds {
 }
 
 export class WindowManager {
-  private mainWindow: BrowserWindow | null = null;
-  private ptyManager: PtyManager | null = null;
+  private windows: Set<BrowserWindow> = new Set();
+  private ptyManagers: Map<number, PtyManager> = new Map();
   private store = new Store();
   private saveBoundsTimeout: NodeJS.Timeout | null = null;
 
   constructor() {}
 
-  async createWindow() {
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.focus();
-      return;
-    }
-
+  async createWindow(options?: {
+    cwd?: string;
+    sessionId?: string;
+    initialView?: 'welcome' | 'workspace';
+  }) {
     try {
       const cliTheme = await this.getThemeFromSettings();
       const bounds = this.store.get('windowBounds', {
@@ -40,7 +39,7 @@ export class WindowManager {
         height: 600,
       }) as WindowBounds;
 
-      this.mainWindow = new BrowserWindow({
+      const window = new BrowserWindow({
         ...bounds,
         title: 'Gemini CLI',
         icon: ICON_PATH,
@@ -52,33 +51,58 @@ export class WindowManager {
         },
       });
 
+      this.windows.add(window);
+
+      const queryParams = new URLSearchParams();
+      if (options?.cwd) queryParams.append('cwd', options.cwd);
+      if (options?.sessionId) queryParams.append('sessionId', options.sessionId);
+      if (options?.initialView) queryParams.append('initialView', options.initialView);
+      
+      const queryString = queryParams.toString();
+      const url = process.env.VITE_DEV_SERVER_URL
+        ? `${process.env.VITE_DEV_SERVER_URL}?${queryString}`
+        : `${RENDERER_INDEX_PATH}?${queryString}`; // For file protocol, query params might need special handling or hash
+
       if (process.env.VITE_DEV_SERVER_URL) {
-        this.mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+        window.loadURL(url);
       } else {
-        this.mainWindow.loadFile(RENDERER_INDEX_PATH);
+        // loadFile doesn't support query params directly in the path usually for some electron versions, 
+        // but we can use loadURL with file:// protocol
+        window.loadURL(`file://${RENDERER_INDEX_PATH}?${queryString}`);
       }
 
-      this.ptyManager = new PtyManager(this.mainWindow);
-      this.ptyManager.start();
+      const ptyManager = new PtyManager(window);
+      this.ptyManagers.set(window.id, ptyManager);
+      
+      // Calculate initial cols/rows based on window size
+      // These are rough estimates; the frontend will resize properly once loaded
+      // Assuming char width ~9px and height ~18px (typical for monospace 12-14px)
+      // Subtracting sidebar (~250px) and padding (~20px)
+      const initialCols = Math.max(80, Math.floor((bounds.width - 270) / 9));
+      const initialRows = Math.max(30, Math.floor((bounds.height - 40) / 18));
 
-      this.mainWindow.on('closed', () => {
-        this.ptyManager?.dispose();
-        this.ptyManager = null;
-        this.mainWindow = null;
+      // Start PTY with the provided session ID or a new default one
+      // We use the estimated dimensions to ensure we pass valid numbers
+      ptyManager.start(options?.sessionId || 'default', options?.cwd, initialCols, initialRows);
+
+      window.on('closed', () => {
+        ptyManager.dispose();
+        this.ptyManagers.delete(window.id);
+        this.windows.delete(window);
       });
 
-      this.mainWindow.on('resize', () => {
-        this.handleResize();
-        this.saveBounds();
+      window.on('resize', () => {
+        this.handleResize(window);
+        this.saveBounds(window);
       });
 
-      this.mainWindow.on('move', () => {
-        this.saveBounds();
+      window.on('move', () => {
+        this.saveBounds(window);
       });
 
-      this.mainWindow.webContents.on('did-finish-load', () => {
-        if (cliTheme && this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send('theme:init', cliTheme);
+      window.webContents.on('did-finish-load', () => {
+        if (cliTheme && !window.isDestroyed()) {
+          window.webContents.send('theme:init', cliTheme);
         }
       });
     } catch (e) {
@@ -87,16 +111,21 @@ export class WindowManager {
         'Error in createWindow',
         `Message: ${error.message}\nStack: ${error.stack}`,
       );
-      app.quit();
+      // Only quit if no windows are left? Or just log.
+      if (this.windows.size === 0) {
+        app.quit();
+      }
     }
   }
 
   getMainWindow(): BrowserWindow | null {
-    return this.mainWindow;
+    // Return the focused window or the first one
+    return BrowserWindow.getFocusedWindow() || this.windows.values().next().value || null;
   }
 
-  getPtyManager(): PtyManager | null {
-    return this.ptyManager;
+  getPtyManager(window?: BrowserWindow): PtyManager | null {
+    const targetWindow = window || this.getMainWindow();
+    return targetWindow ? this.ptyManagers.get(targetWindow.id) || null : null;
   }
 
   getIconPath(): string {
@@ -121,23 +150,23 @@ export class WindowManager {
     return themeManager.getTheme(themeName);
   }
 
-  private handleResize() {
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      const [width, height] = this.mainWindow.getContentSize();
-      this.mainWindow.webContents.send('main-window-resize', {
+  private handleResize(window: BrowserWindow) {
+    if (!window.isDestroyed()) {
+      const [width, height] = window.getContentSize();
+      window.webContents.send('main-window-resize', {
         width,
         height,
       });
     }
   }
 
-  private saveBounds() {
+  private saveBounds(window: BrowserWindow) {
     if (this.saveBoundsTimeout) {
       clearTimeout(this.saveBoundsTimeout);
     }
     this.saveBoundsTimeout = setTimeout(() => {
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.store.set('windowBounds', this.mainWindow.getBounds());
+      if (!window.isDestroyed()) {
+        this.store.set('windowBounds', window.getBounds());
       }
     }, 500);
   }

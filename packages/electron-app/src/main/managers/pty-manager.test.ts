@@ -129,10 +129,10 @@ describe('PtyManager', () => {
   });
 
   it('should start pty process', async () => {
-    await ptyManager.start();
+    await ptyManager.start('test-session', undefined, 80, 30);
     expect(mockSpawn).toHaveBeenCalledWith(
       expect.stringMatching(/node(\.exe)?$/),
-      ['/mock/cli/path'],
+      ['/mock/cli/path', '--resume', 'test-session'],
       expect.objectContaining({
         name: 'xterm-color',
         cols: 80,
@@ -141,41 +141,56 @@ describe('PtyManager', () => {
       }),
     );
     expect(mockMainWindow.webContents.send).toHaveBeenCalledWith(
-      'terminal.reset',
+      'terminal.ready',
+      { sessionId: 'test-session' },
     );
   });
 
   it('should handle pty data', async () => {
-    await ptyManager.start();
+    await ptyManager.start('test-session', undefined, 80, 30);
     const onDataCallback = mockPtyProcess.onData.mock.calls[0][0];
     onDataCallback('test data');
     expect(mockMainWindow.webContents.send).toHaveBeenCalledWith(
       'terminal.incomingData',
-      'test data',
+      { sessionId: 'test-session', data: 'test data' },
     );
   });
 
   it('should resize pty', async () => {
-    await ptyManager.start();
-    ptyManager.resize(100, 50);
+    await ptyManager.start('test-session', undefined, 80, 30);
+    ptyManager.resize('test-session', 100, 50);
     expect(mockPtyProcess.resize).toHaveBeenCalledWith(100, 50);
   });
 
   it('should write to pty', async () => {
-    await ptyManager.start();
-    ptyManager.write('test input');
+    await ptyManager.start('test-session', undefined, 80, 30);
+    ptyManager.write('test-session', 'test input');
     expect(mockPtyProcess.write).toHaveBeenCalledWith('test input');
   });
 
   it('should dispose pty and file watcher', async () => {
-    await ptyManager.start();
+    await ptyManager.start('test-session', undefined, 80, 30);
     await ptyManager.dispose();
     expect(mockPtyProcess.kill).toHaveBeenCalled();
     expect(mockFileWatcher.close).toHaveBeenCalled();
   });
 
+  it('should restart existing session by killing old one', async () => {
+    // Start first session
+    await ptyManager.start('test-session', undefined, 80, 30);
+    expect(mockSpawn).toHaveBeenCalledTimes(1);
+    
+    // Start again with same ID (restart)
+    await ptyManager.start('test-session', undefined, 80, 30);
+    
+    // Should have killed the first process
+    expect(mockPtyProcess.kill).toHaveBeenCalled();
+    // Should have spawned a new one
+    expect(mockSpawn).toHaveBeenCalledTimes(2);
+  });
+
   it('should setup file watcher with awaitWriteFinish', async () => {
-    await ptyManager.start();
+    await ptyManager.start('test-session', undefined, 80, 30);
     expect(watch).toHaveBeenCalledWith(
       expect.stringContaining('.gemini/tmp/diff'),
       expect.objectContaining({

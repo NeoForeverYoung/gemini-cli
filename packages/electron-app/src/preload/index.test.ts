@@ -142,4 +142,13 @@ describe('preload script', () => {
       );
     });
   });
+
+  describe('openDirectory', () => {
+    it('invokes dialog:open-directory', () => {
+      exposedApi.openDirectory();
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'dialog:open-directory',
+      );
+    });
+  });
 });

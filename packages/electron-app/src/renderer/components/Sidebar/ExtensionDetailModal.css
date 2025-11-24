@@ -1,0 +1,239 @@
+.detail-modal-content {
+  background-color: var(--bg-color);
+  width: 90%;
+  height: auto;
+  max-width: 800px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  padding: 20px;
+  position: relative;
+  color: var(--fg-color);
+}
+
+.detail-modal-header {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.extension-detail-container {
+  padding: 20px;
+  color: var(--fg-color);
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.detail-icon-name-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  flex: 1;
+}
+
+.detail-card-icon, .detail-card-icon-placeholder {
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #7c3aed, #4c1d95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.detail-text-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 5px;
+  color: var(--fg-color);
+}
+
+.detail-author {
+  font-size: 16px;
+  color: var(--fg-color);
+  opacity: 0.6;
+}
+
+.detail-meta-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--fg-color);
+  opacity: 0.8;
+}
+
+.detail-stars {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.detail-version {
+  font-size: 14px;
+  color: #a371f7;
+}
+
+.detail-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.detail-tag {
+  font-size: 12px;
+  color: #a371f7;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-description {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--fg-color);
+  opacity: 0.8;
+  margin-bottom: 30px;
+}
+
+.install-section h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: var(--fg-color);
+}
+
+.install-command-box {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid #7c3aed;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+}
+
+.install-command-box pre {
+  flex: 1;
+  margin: 0;
+  font-family: 'Menlo, "DejaVu Sans Mono", Consolas, "Lucida Console", monospace';
+  font-size: 14px;
+  color: #a371f7;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.copy-button {
+  background: none;
+  border: none;
+  color: var(--fg-color);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-left: 10px;
+}
+
+.copy-button:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.disclaimer {
+  font-size: 12px;
+  color: var(--fg-color);
+  opacity: 0.6;
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.view-github-button {
+  background-color: #7c3aed;
+  border: none;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+  flex: 1;
+  justify-content: center;
+}
+
+.view-github-button:hover {
+  background-color: #6a2dc4;
+}
+
+.install-button {
+  background: none;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+}
+
+
+.install-button:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #8b949e;
+}
+
+.install-button.installing {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.install-button.success {
+  color: #2ea043;
+  border-color: #2ea043;
+  background-color: rgba(46, 160, 67, 0.1);
+}
+
+@keyframes spinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spinner 1s linear infinite;
+}

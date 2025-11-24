@@ -15,6 +15,7 @@ import {
 } from '@google/gemini-cli-core';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Constant for the resume "latest" identifier.
@@ -410,9 +411,72 @@ export class SessionSelector {
       try {
         selectedSession = await this.findSession(resumeArg);
       } catch (error) {
+        // Try to find a checkpoint with this tag
+        const encodedTag = encodeURIComponent(resumeArg);
+        const checkpointName = `checkpoint-${encodedTag}.json`;
+        const checkpointPath = path.join(
+          this.config.storage.getProjectTempDir(),
+          checkpointName,
+        );
+
+        try {
+          const fileContent = await fs.readFile(checkpointPath, 'utf8');
+          const content = JSON.parse(fileContent);
+
+          // Check if it looks like a checkpoint (array of Content)
+          if (Array.isArray(content)) {
+            // Convert checkpoint (Content[]) to ConversationRecord
+            const messages = content.map((item) => ({
+              type: item.role === 'user' ? 'user' : 'model',
+              content: item.parts || [],
+            })) as MessageRecord[];
+
+            const newSessionId = randomUUID();
+            const timestamp = new Date()
+              .toISOString()
+              .slice(0, 16)
+              .replace(/:/g, '-');
+            const newSessionFileName = `${SESSION_FILE_PREFIX}${timestamp}-${newSessionId.slice(
+              0,
+              8,
+            )}.json`;
+            const chatsDir = path.join(
+              this.config.storage.getProjectTempDir(),
+              'chats',
+            );
+            // Ensure chats directory exists (it might not if this is the first session)
+            await fs.mkdir(chatsDir, { recursive: true });
+            const newSessionPath = path.join(chatsDir, newSessionFileName);
+
+            const sessionData: ConversationRecord = {
+              sessionId: newSessionId,
+              startTime: new Date().toISOString(),
+              lastUpdated: new Date().toISOString(),
+              messages,
+              projectHash: path.basename(
+                this.config.storage.getProjectTempDir(),
+              ),
+            };
+
+            await fs.writeFile(
+              newSessionPath,
+              JSON.stringify(sessionData, null, 2),
+              'utf8',
+            );
+
+            return {
+              sessionPath: newSessionPath,
+              sessionData,
+              displayInfo: `Resumed from checkpoint "${resumeArg}"`,
+            };
+          }
+        } catch (checkpointError) {
+          // Ignore, throw original error below
+        }
+
         // Re-throw with more detailed message for resume command
         throw new Error(
-          `Invalid session identifier "${resumeArg}". Use --list-sessions to see available sessions, then use --resume {number}, --resume {uuid}, or --resume latest.  Error: ${error}`,
+          `Invalid session identifier "${resumeArg}". Tried to load checkpoint at: ${checkpointPath}. Use --list-sessions to see available sessions, then use --resume {number}, --resume {uuid}, or --resume latest.  Error: ${error}`,
         );
       }
     }

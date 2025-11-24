@@ -19,6 +19,7 @@ interface UseSessionResumeParams {
   setQuittingMessages: (messages: null) => void;
   resumedSessionData?: ResumedSessionData;
   isAuthenticating: boolean;
+  uiHistoryAlreadyLoaded?: boolean;
 }
 
 /**
@@ -34,6 +35,7 @@ export function useSessionResume({
   setQuittingMessages,
   resumedSessionData,
   isAuthenticating,
+  uiHistoryAlreadyLoaded,
 }: UseSessionResumeParams) {
   // Use refs to avoid dependency chain that causes infinite loop
   const historyManagerRef = useRef(historyManager);
@@ -49,6 +51,7 @@ export function useSessionResume({
       uiHistory: HistoryItemWithoutId[],
       clientHistory: Array<{ role: 'user' | 'model'; parts: Part[] }>,
       resumedData: ResumedSessionData,
+      skipUiUpdate = false,
     ) => {
       // Wait for the client.
       if (!isGeminiClientInitialized) {
@@ -56,12 +59,14 @@ export function useSessionResume({
       }
 
       // Now that we have the client, load the history into the UI and the client.
-      setQuittingMessages(null);
-      historyManagerRef.current.clearItems();
-      uiHistory.forEach((item, index) => {
-        historyManagerRef.current.addItem(item, index, true);
-      });
-      refreshStaticRef.current(); // Force Static component to re-render with the updated history.
+      if (!skipUiUpdate) {
+        setQuittingMessages(null);
+        historyManagerRef.current.clearItems();
+        uiHistory.forEach((item, index) => {
+          historyManagerRef.current.addItem(item, index, true);
+        });
+        refreshStaticRef.current(); // Force Static component to re-render with the updated history.
+      }
 
       // Give the history to the Gemini client.
       config.getGeminiClient()?.resumeChat(clientHistory, resumedData);
@@ -87,6 +92,7 @@ export function useSessionResume({
         historyData.uiHistory,
         historyData.clientHistory,
         resumedSessionData,
+        uiHistoryAlreadyLoaded,
       );
     }
   }, [
@@ -94,6 +100,7 @@ export function useSessionResume({
     isAuthenticating,
     isGeminiClientInitialized,
     loadHistoryForResume,
+    uiHistoryAlreadyLoaded,
   ]);
 
   return { loadHistoryForResume };

@@ -43,9 +43,12 @@ describe('SettingsModal', () => {
       onMainWindowResize: vi.fn(() => vi.fn()),
       terminal: {
         onData: vi.fn(() => vi.fn()),
+        onReady: vi.fn(() => vi.fn()),
         sendKey: vi.fn(),
+        sendInput: vi.fn(),
         resize: vi.fn(),
         onReset: vi.fn(() => vi.fn()),
+        onNotFound: vi.fn(() => vi.fn()),
       },
       theme: {
         set: vi.fn(),
@@ -122,7 +125,7 @@ describe('SettingsModal', () => {
   it('does not render when isOpen is false', () => {
     const { container } = render(
       <SettingsProvider>
-        <SettingsModal isOpen={false} onClose={() => {}} />
+        <SettingsModal isOpen={false} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
     expect(container.firstChild).toBeNull();
@@ -131,7 +134,7 @@ describe('SettingsModal', () => {
   it('renders when isOpen is true and fetches initial data', async () => {
     const { container } = render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={() => {}} />
+        <SettingsModal isOpen={true} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
 
@@ -146,16 +149,39 @@ describe('SettingsModal', () => {
     expect(sidebar?.querySelector('.active')?.textContent).toBe('General');
   });
 
-  it('calls onClose when the close button is clicked', async () => {
+  it('calls onClose when the save button is clicked', async () => {
     const handleClose = vi.fn();
     render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={handleClose} />
+        <SettingsModal isOpen={true} onClose={handleClose} sessions={[]} />
       </SettingsProvider>,
     );
     await waitFor(() => screen.getByText('Settings'));
-    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
+      expect(handleClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('calls onClose and DOES NOT restart terminals when Cancel is clicked', async () => {
+    const handleClose = vi.fn();
+    const sessions = [{ id: '1', cwd: '/tmp' }];
+    render(
+      <SettingsProvider>
+        <SettingsModal
+          isOpen={true}
+          onClose={handleClose}
+          sessions={sessions}
+        />
+      </SettingsProvider>,
+    );
+    await waitFor(() => screen.getByText('Settings'));
+
+    fireEvent.click(screen.getByText('Cancel'));
+
+    await waitFor(() => {
+      expect(mockRestartTerminal).not.toHaveBeenCalled();
+      expect(mockSettingsSet).not.toHaveBeenCalled();
       expect(handleClose).toHaveBeenCalledTimes(1);
     });
   });
@@ -163,7 +189,7 @@ describe('SettingsModal', () => {
   it('switches categories when a sidebar item is clicked', async () => {
     const { container } = render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={() => {}} />
+        <SettingsModal isOpen={true} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
 
@@ -184,7 +210,7 @@ describe('SettingsModal', () => {
     mockSettingsGet.mockResolvedValue({ merged: { vimMode: false } });
     render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={() => {}} />
+        <SettingsModal isOpen={true} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
 
@@ -195,7 +221,7 @@ describe('SettingsModal', () => {
 
     fireEvent.click(vimCheckbox);
 
-    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByText('Save'));
 
     // We don't expect it to be checked immediately because it waits for refreshSettings
     // But we can check if set was called.
@@ -211,7 +237,7 @@ describe('SettingsModal', () => {
     mockSettingsGet.mockResolvedValue({ merged: { preferredEditor: 'code' } });
     render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={() => {}} />
+        <SettingsModal isOpen={true} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
 
@@ -220,7 +246,7 @@ describe('SettingsModal', () => {
     const editorInput = await screen.findByLabelText('Preferred Editor');
     fireEvent.change(editorInput, { target: { value: 'vim' } });
 
-    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockSettingsSet).toHaveBeenCalledWith({
@@ -236,7 +262,7 @@ describe('SettingsModal', () => {
     });
     render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={() => {}} />
+        <SettingsModal isOpen={true} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
 
@@ -245,7 +271,7 @@ describe('SettingsModal', () => {
     const formatSelect = await screen.findByLabelText('Memory Import Format');
     fireEvent.change(formatSelect, { target: { value: 'flat' } });
 
-    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockSettingsSet).toHaveBeenCalledWith({
@@ -258,7 +284,7 @@ describe('SettingsModal', () => {
   it('renders McpServerManager and handles changes', async () => {
     render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={() => {}} />
+        <SettingsModal isOpen={true} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
 
@@ -270,7 +296,7 @@ describe('SettingsModal', () => {
 
     fireEvent.click(screen.getByText('Update Servers'));
 
-    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockSettingsSet).toHaveBeenCalledWith({
@@ -286,7 +312,7 @@ describe('SettingsModal', () => {
     });
     render(
       <SettingsProvider>
-        <SettingsModal isOpen={true} onClose={() => {}} />
+        <SettingsModal isOpen={true} onClose={() => {}} sessions={[]} />
       </SettingsProvider>,
     );
 
@@ -295,7 +321,7 @@ describe('SettingsModal', () => {
     const cwdInput = await screen.findByLabelText('Terminal Working Directory');
     fireEvent.change(cwdInput, { target: { value: '/Users/test/new' } });
 
-    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockSettingsSet).toHaveBeenCalledWith({

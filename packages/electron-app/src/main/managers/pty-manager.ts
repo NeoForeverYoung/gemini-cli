@@ -59,163 +59,236 @@ async function waitForFileStability(
 }
 
 export class PtyManager {
-  private ptyProcess: IPty | null = null;
-  private onDataDisposable: IDisposable | null = null;
+  private sessions = new Map<
+    string,
+    {
+      process: IPty;
+      onData: IDisposable;
+      buffer: string;
+    }
+  >();
   private fileWatcher: FSWatcher | null = null;
+  private sessionPromises = new Map<string, Promise<void>>();
 
   constructor(private mainWindow: BrowserWindow) {}
 
-  async start(retryCount = 0) {
-    await this.dispose();
-
-    // Add a small delay to allow OS to clean up process if needed
-    await new Promise((resolve) => setTimeout(resolve, 250));
-
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      return;
+  async start(
+    sessionId: string,
+    cwd?: string,
+    cols: number,
+    rows: number,
+    shouldResume = true,
+    retryCount = 0,
+  ): Promise<void> {
+    // If a start operation is already in progress for this session, wait for it
+    if (this.sessionPromises.has(sessionId)) {
+      await this.sessionPromises.get(sessionId);
+      // After waiting, fall through to the re-attach logic if the session was created
     }
 
-    this.mainWindow.webContents.send('terminal.reset');
-    const sessionId = crypto.randomUUID();
-    await this.setupFileWatcher();
-
-    log.info(`[PTY] Starting PTY process with CLI path: ${CLI_PATH}`);
-
-    if (!fs.existsSync(CLI_PATH)) {
-      const errorMsg = `[PTY] CLI path not found: ${CLI_PATH}`;
-      log.error(errorMsg);
-      dialog.showErrorBox('Fatal Error', errorMsg);
-      return;
-    }
-
-    const terminalCwd = await this.getTerminalCwd();
-    const env = await this.getEnv();
-
-    try {
-      const ptyInfo = await getPty();
-      if (!ptyInfo) {
-        throw new Error('Failed to load PTY implementation');
+    // Check if session already exists
+    if (this.sessions.has(sessionId)) {
+      log.info(`[PTY] Restarting session: ${sessionId}`);
+      const session = this.sessions.get(sessionId)!;
+      
+      // Kill the existing process asynchronously (don't block)
+      this.sessions.delete(sessionId);
+      
+      try {
+        session.onData.dispose();
+        session.process.kill();
+      } catch (e) {
+        log.warn(`[PTY] Failed to kill existing session ${sessionId}:`, e);
       }
+    }
 
-      const command = process.platform === 'win32' ? 'node.exe' : 'node';
-      const args = [CLI_PATH];
-
-      const ptyProcess = ptyInfo.module.spawn(command, args, {
-        name: 'xterm-color',
-        cols: 80,
-        rows: 30,
-        cwd: terminalCwd,
-        env: {
-          ...process.env,
-          ...env,
-          ELECTRON_RUN_AS_NODE: '1',
-          GEMINI_CLI_CONTEXT: 'electron',
-          GEMINI_SESSION_ID: sessionId,
-          NODE_NO_WARNINGS: '1',
-          DEV: 'false',
-        },
-      }) as IPty;
-      this.ptyProcess = ptyProcess;
-
-      let outputBuffer = '';
-      const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
-      const startTime = Date.now();
-
-      ptyProcess.onExit(({ exitCode, signal }) => {
-        // Only clear if it's the current process
-        if (this.ptyProcess === ptyProcess) {
-          this.ptyProcess = null;
+    // Start new session logic wrapped in a promise
+    const startPromise = (async () => {
+      try {
+        if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+          return;
         }
-        const signalMsg = signal ? ` and signal ${signal}` : '';
-        log.info(`[PTY] Process exited with code ${exitCode}${signalMsg}`);
 
-        const output = outputBuffer.trim();
-        const baseMessage = `Exit Code: ${exitCode}${
-          signal ? `, Signal: ${signal}` : ''
-        }`;
-        const fullMessage = output
-          ? `${baseMessage}\n\nOutput:\n${output}`
-          : baseMessage;
+        // Clean up file watcher if it's a completely new start (optional, maybe we keep it?)
+        // For now, we keep one file watcher for the app lifetime or check if we need to restart it
+        if (!this.fileWatcher) {
+          await this.setupFileWatcher();
+        }
 
-        const duration = Date.now() - startTime;
+        log.info(
+          `[PTY] Starting new PTY process for session ${sessionId} with CLI path: ${CLI_PATH}`,
+        );
 
-        if (exitCode !== 0) {
-          dialog.showErrorBox('PTY Process Exited Unexpectedly', fullMessage);
-        } else if (duration < 2000) {
-          // Only show "exited too quickly" if it wasn't intentionally killed
-        } else {
-          if (!this.mainWindow.isDestroyed()) {
-            this.mainWindow.webContents.send(
-              'terminal.incomingData',
-              '\r\n[Process completed]\r\n',
-            );
+        if (!fs.existsSync(CLI_PATH)) {
+          const errorMsg = `[PTY] CLI path not found: ${CLI_PATH}`;
+          log.error(errorMsg);
+          dialog.showErrorBox('Fatal Error', errorMsg);
+          return;
+        }
+
+        const terminalCwd = cwd || (await this.getTerminalCwd());
+        const env = await this.getEnv();
+
+        const ptyInfo = await getPty();
+        if (!ptyInfo) {
+          throw new Error('Failed to load PTY implementation');
+        }
+
+        const command = process.platform === 'win32' ? 'node.exe' : 'node';
+        const args = [CLI_PATH];
+        if (sessionId && shouldResume) {
+          args.push('--resume', sessionId);
+        }
+
+        const ptyProcess = ptyInfo.module.spawn(command, args, {
+          name: 'xterm-color',
+          cols,
+          rows,
+          cwd: terminalCwd,
+          env: {
+            ...process.env,
+            ...env,
+            ELECTRON_RUN_AS_NODE: '1',
+            GEMINI_CLI_CONTEXT: 'electron',
+            GEMINI_SESSION_ID: sessionId,
+            NODE_NO_WARNINGS: '1',
+            DEV: 'false',
+          },
+        }) as IPty;
+
+        log.info(`[PTY] Spawned process for session ${sessionId}, PID: ${ptyProcess.pid}`);
+
+        const MAX_BUFFER_SIZE = 100 * 1024; // 100KB buffer for history restoration
+
+        const onDataDisposable = ptyProcess.onData((data) => {
+          const session = this.sessions.get(sessionId);
+          if (session) {
+            session.buffer += data;
+            if (session.buffer.length > MAX_BUFFER_SIZE) {
+              session.buffer = session.buffer.substring(
+                session.buffer.length - MAX_BUFFER_SIZE,
+              );
+            }
+
+            if (!this.mainWindow.isDestroyed()) {
+              this.mainWindow.webContents.send('terminal.incomingData', {
+                sessionId,
+                data,
+              });
+            }
           }
-        }
-      });
+        });
 
-      this.onDataDisposable = ptyProcess.onData((data) => {
-        outputBuffer += data;
-        if (outputBuffer.length > MAX_BUFFER_SIZE) {
-          outputBuffer = outputBuffer.substring(
-            outputBuffer.length - MAX_BUFFER_SIZE,
-          );
-        }
+        this.sessions.set(sessionId, {
+          process: ptyProcess,
+          onData: onDataDisposable,
+          buffer: '',
+        });
+
         if (!this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send('terminal.incomingData', data);
+          // We might need to signal readiness for this specific session?
+          // For now, frontend assumes ready if start resolves or data comes.
+          this.mainWindow.webContents.send('terminal.ready', { sessionId });
         }
-      });
-    } catch (e) {
-      const error = e as Error;
-      log.error(
-        `[PTY] Failed to start PTY process (attempt ${retryCount + 1}):`,
-        error,
-      );
 
-      if (retryCount < 3) {
-        setTimeout(() => this.start(retryCount + 1), 1000 * (retryCount + 1));
-        return;
+        ptyProcess.onExit(({ exitCode, signal }) => {
+          // Check if session is still active (wasn't removed by restart logic)
+          if (!this.sessions.has(sessionId)) {
+            return;
+          }
+          
+          const session = this.sessions.get(sessionId)!;
+          // Only cleanup if the process actually exited (not just replaced)
+          if (session.process === ptyProcess) {
+            session.onData.dispose();
+            this.sessions.delete(sessionId);
+          }
+
+          const signalMsg = signal ? ` and signal ${signal}` : '';
+          log.info(
+            `[PTY] Process for session ${sessionId} exited with code ${exitCode}${signalMsg}`,
+          );
+
+          if (exitCode !== 0) {
+            // Optional: notify user
+          } else {
+            if (!this.mainWindow.isDestroyed()) {
+              this.mainWindow.webContents.send('terminal.incomingData', {
+                sessionId,
+                data: '\r\n[Process completed]\r\n',
+              });
+            }
+          }
+        });
+      } catch (e) {
+        const error = e as Error;
+        log.error(
+          `[PTY] Failed to start PTY process (attempt ${retryCount + 1}):`,
+          error,
+        );
+
+        if (retryCount < 3) {
+          setTimeout(
+            () => this.start(sessionId, cwd, cols, rows, shouldResume, retryCount + 1),
+            1000 * (retryCount + 1),
+          );
+          return;
+        }
+
+        dialog.showErrorBox(
+          'Failed to Start PTY Process',
+          `Message: ${error.message}\nStack: ${error.stack}`,
+        );
+      } finally {
+        this.sessionPromises.delete(sessionId);
       }
+    })();
 
-      dialog.showErrorBox(
-        'Failed to Start PTY Process',
-        `Message: ${error.message}\nStack: ${error.stack}`,
-      );
+    this.sessionPromises.set(sessionId, startPromise);
+    return startPromise;
+  }
+
+  resize(sessionId: string, cols: number, rows: number) {
+    if (this.sessions.has(sessionId)) {
+      try {
+        this.sessions.get(sessionId)!.process.resize(cols, rows);
+      } catch (error) {
+        log.warn(`[PTY] Failed to resize PTY for session ${sessionId}:`, error);
+      }
     }
   }
 
-  resize(cols: number, rows: number) {
-    if (this.ptyProcess) {
+  write(sessionId: string, data: string) {
+    if (this.sessions.has(sessionId)) {
       try {
-        this.ptyProcess.resize(cols, rows);
+        this.sessions.get(sessionId)!.process.write(data);
       } catch (error) {
-        log.warn('[PTY] Failed to resize PTY:', error);
-      }
-    }
-  }
-
-  write(data: string) {
-    if (this.ptyProcess) {
-      try {
-        this.ptyProcess.write(data);
-      } catch (error) {
-        log.warn('[PTY] Failed to write to PTY:', error);
+        log.warn(`[PTY] Failed to write to PTY for session ${sessionId}:`, error);
       }
     } else {
-      log.warn('[PTY] Cannot write, ptyProcess is null');
+      log.warn(`[PTY] Cannot write, no session ${sessionId}`);
+      // Notify frontend that session is missing so it can trigger a restart/reload
+      if (!this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send('terminal.notFound', { sessionId });
+      }
     }
   }
 
   async dispose() {
-    if (this.onDataDisposable) {
-      this.onDataDisposable.dispose();
-      this.onDataDisposable = null;
+    for (const [id, session] of this.sessions) {
+      try {
+        session.onData.dispose();
+        log.info(`[PTY] Killing process for session ${id}, PID: ${session.process.pid}`);
+        session.process.kill();
+      } catch (e) {
+        log.warn(`[PTY] Failed to dispose session ${id}:`, e);
+      }
     }
-    if (this.ptyProcess) {
-      this.ptyProcess.kill();
-      // Give the process a moment to actually die
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      this.ptyProcess = null;
-    }
+    this.sessions.clear();
+
+    // Give processes a moment to actually die
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     if (this.fileWatcher) {
       await this.fileWatcher.close();
       this.fileWatcher = null;
@@ -319,6 +392,7 @@ export class PtyManager {
           if (!this.mainWindow.isDestroyed()) {
             this.mainWindow.webContents.send('gemini-editor:show', {
               diffPath: fullPath,
+              filePath: meta.filePath,
               oldContent,
               newContent,
               meta,

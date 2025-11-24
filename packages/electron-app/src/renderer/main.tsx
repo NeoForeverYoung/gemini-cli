@@ -10,13 +10,16 @@ import './index.css';
 import App from './App';
 import '@xterm/xterm/css/xterm.css';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ErrorBoundary } from './components/Core/ErrorBoundary';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <SettingsProvider>
-        <App />
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </SettingsProvider>
     </ErrorBoundary>
   </React.StrictMode>,

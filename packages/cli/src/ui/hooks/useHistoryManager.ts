@@ -34,13 +34,16 @@ export interface UseHistoryManagerReturn {
  * Encapsulates the history array, message ID generation, adding items,
  * updating items, and clearing the history.
  */
-export function useHistory({
-  chatRecordingService,
-}: {
-  chatRecordingService?: ChatRecordingService | null;
-} = {}): UseHistoryManagerReturn {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const messageIdCounterRef = useRef(0);
+export function useHistory(
+  initialHistory: HistoryItem[] = [],
+  {
+    chatRecordingService,
+  }: {
+    chatRecordingService?: ChatRecordingService | null;
+  } = {},
+): UseHistoryManagerReturn {
+  const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
+  const messageIdCounterRef = useRef(initialHistory.length);
 
   // Generates a unique message ID based on a timestamp and a counter.
   const getNextMessageId = useCallback((baseTimestamp: number): number => {

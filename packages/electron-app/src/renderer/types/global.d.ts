@@ -16,6 +16,10 @@ import type {
   ThemeSetPayload,
   MainWindowResizePayload,
 } from '../../../shared/types';
+import type { WorkspaceGitStatus, FileDiff } from '../../types/git';
+import type { Session } from '../../types/session';
+import type { McpServers } from './mcp';
+import type { ExtensionInfo, AvailableExtension } from './extensions';
 
 export interface GeminiEditorData {
   filePath: string;
@@ -69,13 +73,66 @@ export interface IElectronAPI {
   onMainWindowResize: (
     callback: (event: IpcRendererEvent, data: MainWindowResizePayload) => void,
   ) => () => void;
+  window: {
+    create: (options?: {
+      cwd?: string;
+      sessionId?: string;
+      initialView?: 'welcome' | 'workspace';
+    }) => Promise<void>;
+    openDirectoryAndCreate: () => Promise<void>;
+  };
+  git: {
+    watchWorkspaces: (paths: string[]) => void;
+    onStatusUpdate: (
+      callback: (event: IpcRendererEvent, status: WorkspaceGitStatus) => void,
+    ) => () => void;
+    getHistory: (cwd: string) => Promise<
+      {
+        hash: string;
+        message: string;
+        author: string;
+        date: string;
+      }[]
+    >;
+    stageFile: (cwd: string, file: string) => Promise<void>;
+    unstageFile: (cwd: string, file: string) => Promise<void>;
+    revertFile: (cwd: string, file: string) => Promise<void>;
+    getFileDiff: (cwd: string, filePath: string) => Promise<FileDiff>;
+  };
+  sessions: {
+    getRecent: () => Promise<Session[]>;
+    delete: (hash: string, tag: string) => Promise<void>;
+  };
+  changelog: {
+    get: () => Promise<string>;
+  };
+  mcp: {
+    getServers: () => Promise<McpServers>;
+  };
+  extensions: {
+    getList: () => Promise<ExtensionInfo[]>;
+    getAvailable: () => Promise<AvailableExtension[]>;
+    install: (source: string) => Promise<void>;
+    uninstall: (name: string) => Promise<void>;
+  };
   terminal: {
     onData: (
-      callback: (event: IpcRendererEvent, data: string) => void,
+      callback: (
+        event: IpcRendererEvent,
+        payload: { sessionId: string; data: string } | string,
+      ) => void,
     ) => () => void;
-    sendKey: (key: string) => void;
+    onReady: (callback: (event: IpcRendererEvent) => void) => () => void;
+    sendKey: (sessionId: string, key: string) => void;
+    sendInput: (sessionId: string, data: string) => void;
     resize: (size: TerminalResizePayload) => void;
     onReset: (callback: (event: IpcRendererEvent) => void) => () => void;
+    onNotFound: (
+      callback: (
+        event: IpcRendererEvent,
+        payload: { sessionId: string },
+      ) => void,
+    ) => () => void;
   };
   theme: {
     set: (theme: ThemeSetPayload) => void;
@@ -98,7 +155,13 @@ export interface IElectronAPI {
       changes: Partial<Settings>;
       scope?: string;
     }) => Promise<void>;
-    restartTerminal: () => void;
+    restartTerminal: (
+      sessionId: string,
+      cwd?: string,
+      shouldResume?: boolean,
+      cols?: number,
+      rows?: number,
+    ) => Promise<void>;
   };
   languageMap: {
     get: () => Promise<Record<string, string>>;
@@ -110,6 +173,14 @@ export interface IElectronAPI {
   resolveDiff: (
     result: GeminiEditorResolvePayload,
   ) => Promise<{ success: boolean; error?: string }>;
+  openDirectory: () => Promise<string | null>;
+  openExternal: (url: string) => void;
+  file: {
+    save: (
+      filePath: string,
+      content: string,
+    ) => Promise<{ success: boolean; error?: string }>;
+  };
 }
 
 declare global {

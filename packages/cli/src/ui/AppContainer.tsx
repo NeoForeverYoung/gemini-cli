@@ -116,6 +116,7 @@ import { isWorkspaceTrusted } from '../config/trustedFolders.js';
 import { useAlternateBuffer } from './hooks/useAlternateBuffer.js';
 import { useSettings } from './contexts/SettingsContext.js';
 import { enableSupportedProtocol } from './utils/kittyProtocolDetector.js';
+import { convertSessionToHistoryFormats } from './hooks/useSessionBrowser.js';
 
 const WARNING_PROMPT_DURATION_MS = 1000;
 const QUEUE_ERROR_DISPLAY_DURATION_MS = 3000;
@@ -153,7 +154,18 @@ const SHELL_HEIGHT_PADDING = 10;
 
 export const AppContainer = (props: AppContainerProps) => {
   const { config, initializationResult, resumedSessionData } = props;
-  const historyManager = useHistory({
+  const initialHistory = useMemo(() => {
+    if (!resumedSessionData) return [];
+    const { uiHistory } = convertSessionToHistoryFormats(
+      resumedSessionData.conversation.messages,
+    );
+    return uiHistory.map((item, index) => ({
+      ...item,
+      id: index,
+    })) as HistoryItem[];
+  }, [resumedSessionData]);
+
+  const historyManager = useHistory(initialHistory, {
     chatRecordingService: config.getGeminiClient()?.getChatRecordingService(),
   });
   useMemoryMonitor(historyManager);
@@ -442,6 +454,7 @@ export const AppContainer = (props: AppContainerProps) => {
     setQuittingMessages,
     resumedSessionData,
     isAuthenticating,
+    uiHistoryAlreadyLoaded: !!resumedSessionData,
   });
 
   // Create handleAuthSelect wrapper for backward compatibility

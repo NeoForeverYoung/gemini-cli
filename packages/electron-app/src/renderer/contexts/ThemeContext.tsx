@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import * as React from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import type { CliTheme, XtermTheme } from '../types/global';
 
-// Define a default theme structure.
-// This will be replaced by the actual theme from the main process.
-const defaultTheme = {
+// Default theme (Dracula-ish)
+const defaultTheme: XtermTheme = {
   background: '#282a36',
   foreground: '#f8f8f2',
   cursor: '#f8f8f2',
@@ -31,8 +31,56 @@ const defaultTheme = {
   brightWhite: '#e6e6e6',
 };
 
-export type Theme = typeof defaultTheme;
+interface ThemeContextType {
+  theme: XtermTheme;
+  setTheme: (theme: Partial<CliTheme> | Partial<XtermTheme>) => void;
+}
 
-export const ThemeContext = React.createContext<Theme>(defaultTheme);
+const ThemeContext = createContext<ThemeContextType>({
+  theme: defaultTheme,
+  setTheme: () => {},
+});
 
-export const useTheme = () => React.useContext(ThemeContext);
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setInternalTheme] = useState<XtermTheme>(defaultTheme);
+
+  const setTheme = (newTheme: Partial<CliTheme> | Partial<XtermTheme>) => {
+    if ('colors' in newTheme && newTheme.colors) {
+      // It's a CliTheme
+      const colors = newTheme.colors;
+      setInternalTheme({
+        background: colors.Background,
+        foreground: colors.Foreground,
+        cursor: colors.Foreground,
+        selectionBackground: '#44475a', // Default or derived?
+        black: '#000000',
+        red: colors.AccentRed,
+        green: colors.AccentGreen,
+        yellow: colors.AccentYellow,
+        blue: colors.AccentBlue,
+        magenta: colors.AccentPurple,
+        cyan: colors.AccentCyan,
+        white: '#bfbfbf',
+        brightBlack: '#4d4d4d',
+        brightRed: colors.AccentRed,
+        brightGreen: colors.AccentGreen,
+        brightYellow: colors.AccentYellow,
+        brightBlue: colors.AccentBlue,
+        brightMagenta: colors.AccentPurple,
+        brightCyan: colors.AccentCyan,
+        brightWhite: '#e6e6e6',
+      });
+    } else {
+      // It's likely an XtermTheme or partial
+      setInternalTheme((prev) => ({ ...prev, ...newTheme }));
+    }
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export const useTheme = () => useContext(ThemeContext);

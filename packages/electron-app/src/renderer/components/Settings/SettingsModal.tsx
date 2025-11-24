@@ -19,6 +19,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  sessions: { id: string; cwd?: string }[];
 }
 
 // Helper to get nested properties safely
@@ -95,7 +96,11 @@ function flattenSchema(
   return result;
 }
 
-export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export function SettingsModal({
+  isOpen,
+  onClose,
+  sessions,
+}: SettingsModalProps) {
   const {
     settings: fullSettings,
     schema,
@@ -109,30 +114,136 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [scope, setScope] = useState('User');
   const [activeCategory, setActiveCategory] = useState('General');
   const [envInput, setEnvInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const envDirty = useRef(false);
   const pendingChanges = useRef<Record<string, Record<string, unknown>>>({});
   const overrides = useRef<Map<string, unknown>>(new Map());
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Manual settings metadata for search
+  const manualSettings = useMemo(
+    () => [
+      {
+        key: 'ui.theme',
+        label: 'Theme',
+        description: 'The color theme for the application.',
+        category: 'UI',
+      },
+      {
+        key: 'general.env',
+        label: 'Environment Variables',
+        description:
+          'Set environment variables for the terminal session (e.g. API_KEY=value).',
+        category: 'General',
+      },
+      {
+        key: 'general.languages',
+        label: 'Language Mappings',
+        description:
+          'Map file extensions to language names for syntax highlighting.',
+        category: 'General',
+      },
+      {
+        key: 'mcp.servers',
+        label: 'MCP Servers',
+        description: 'Configure Model Context Protocol servers.',
+        category: 'MCP Servers',
+      },
+    ],
+    [],
+  );
 
   const flattenedSettings = useMemo(
     () => (schema ? flattenSchema(schema) : []),
     [schema],
   );
 
+  const filteredSettings = useMemo(() => {
+    if (!searchQuery) return flattenedSettings;
+    const lowerQuery = searchQuery.toLowerCase();
+    return flattenedSettings.filter(
+      (s) =>
+        s.key.toLowerCase().includes(lowerQuery) ||
+        s.label.toLowerCase().includes(lowerQuery) ||
+        (s.description && s.description.toLowerCase().includes(lowerQuery)) ||
+        (s.category && s.category.toLowerCase().includes(lowerQuery)),
+    );
+  }, [flattenedSettings, searchQuery]);
+
+  const isManualSettingVisible = useCallback(
+    (settingKey: string) => {
+      if (!searchQuery) return true;
+      const lowerQuery = searchQuery.toLowerCase();
+      const setting = manualSettings.find((s) => s.key === settingKey);
+      if (!setting) return false;
+
+      return (
+        setting.label.toLowerCase().includes(lowerQuery) ||
+        setting.description.toLowerCase().includes(lowerQuery) ||
+        setting.category.toLowerCase().includes(lowerQuery)
+      );
+    },
+    [searchQuery, manualSettings],
+  );
+
   const categories = useMemo(() => {
-    const cats = new Set(flattenedSettings.map((s) => s.category));
-    cats.add('MCP Servers');
-    cats.add('General');
-    cats.add('UI');
+    const cats = new Set<string>();
+
+    // Add dynamic settings categories
+    filteredSettings.forEach((s) => cats.add(s.category || 'Uncategorized'));
+
+    // Add manual settings categories if they are visible
+    manualSettings.forEach((s) => {
+      if (isManualSettingVisible(s.key)) {
+        cats.add(s.category);
+      }
+    });
+
     const sortedCats = Array.from(cats).sort((a, b) => {
       if (a === 'General') return -1;
       if (b === 'General') return 1;
       return a.localeCompare(b);
     });
     return sortedCats;
-  }, [flattenedSettings]);
+  }, [filteredSettings, isManualSettingVisible, manualSettings]);
+
+  // Reset active category if it disappears from filter
+  useEffect(() => {
+    if (categories.length > 0 && !categories.includes(activeCategory)) {
+      setActiveCategory(categories[0]);
+    }
+  }, [categories, activeCategory]);
 
   const prevIsOpen = useRef(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        if (isSearchOpen) {
+          e.preventDefault();
+          e.stopPropagation(); // Prevent modal close if search is open
+          setIsSearchOpen(false);
+          setSearchQuery(''); // Optional: clear search on close
+        }
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isSearchOpen]);
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
   useEffect(() => {
     if (isOpen && !prevIsOpen.current) {
@@ -194,7 +305,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     [scope],
   );
 
-  const handleClose = async () => {
+  const handleSave = async () => {
     setIsSaving(true);
 
     if (envDirty.current) {
@@ -204,19 +315,35 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       pendingChanges.current[scope].env = envInput;
     }
 
+    // Close immediately to avoid UI pause
+    onClose();
+
+    // Process in background
     try {
       const promises = Object.entries(pendingChanges.current).map(
         ([s, changes]) => window.electron.settings.set({ changes, scope: s }),
       );
       await Promise.all(promises);
-      await window.electron.settings.restartTerminal();
+      
+      // Restart terminals in parallel
+      await Promise.all(
+        sessions.map((s) =>
+          window.electron.settings.restartTerminal(s.id, s.cwd),
+        ),
+      );
+      
+      // Refresh settings last to update UI state if needed (though modal is closed)
       await refreshSettings();
     } catch (error) {
       console.error('Failed to save settings or restart terminal:', error);
+      // Since modal is closed, we might want to show a toast or notification here in a real app
     } finally {
       setIsSaving(false);
-      onClose();
     }
+  };
+
+  const handleCancel = () => {
+    onClose();
   };
 
   const renderSetting = (config: FlattenedSetting) => {
@@ -286,124 +413,182 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }
 
   return (
-    <div className="settings-container">
-      <div className="settings-sidebar">
-        <h2>Settings</h2>
-        <div className="scope-selector">
-          <label htmlFor="scope">Scope</label>
-          <select
-            id="scope"
-            value={scope}
-            onChange={(e) => setScope(e.target.value)}
-          >
-            <option value="User">User</option>
-            <option value="Workspace">Workspace</option>
-            <option value="System">System</option>
-          </select>
-        </div>
-        <ul>
-          {categories.map((category) => (
-            <li
-              key={category}
-              className={activeCategory === category ? 'active' : ''}
-              onClick={() => setActiveCategory(category)}
-            >
-              {category}
-            </li>
-          ))}
-        </ul>
-        <button
-          className="close-button"
-          onClick={handleClose}
-          disabled={isSaving}
-        >
-          {isSaving ? 'Saving...' : 'Close'}
-        </button>
-      </div>
-      <div className="settings-content">
-        <h3>{activeCategory}</h3>
-        {activeCategory === 'UI' && (
-          <div className="setting-item">
-            <div className="setting-info">
-              <label htmlFor="ui.theme">Theme</label>
-              <p>The color theme for the application.</p>
-            </div>
-            <div className="setting-control">
-              <select
-                id="ui.theme"
-                value={
-                  get(
-                    settings as Record<string, unknown>,
-                    'ui.theme',
-                    '',
-                  ) as string
-                }
-                onChange={(e) => handleChange('ui.theme', e.target.value)}
-              >
-                <option value="">Default</option>
-                {availableThemes.map((theme) => (
-                  <option key={theme.name} value={theme.name}>
-                    {theme.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+    <div className="settings-container" onClick={(e) => e.stopPropagation()}>
+      <div className="settings-modal-card" onClick={(e) => e.stopPropagation()}>
+        {isSearchOpen && (
+          <div className="settings-search-popup">
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search settings..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="settings-search-input"
+            />
           </div>
         )}
-        {flattenedSettings
-          .filter((s) => s.category === activeCategory)
-          .map((config) => (
-            <div className="setting-item" key={config.key}>
-              <div className="setting-info">
-                <label htmlFor={config.key}>{config.label}</label>
-                <p>{config.description}</p>
-              </div>
-              <div className="setting-control">{renderSetting(config)}</div>
-            </div>
-          ))}
-        {activeCategory === 'General' && (
-          <>
+        <div className="settings-sidebar">
+          <h2>Settings</h2>
+          <div className="scope-selector">
+            <label htmlFor="scope">Scope</label>
+            <select
+              id="scope"
+              value={scope}
+              onChange={(e) => setScope(e.target.value)}
+            >
+              <option value="User">User</option>
+              <option value="Workspace">Workspace</option>
+              <option value="System">System</option>
+            </select>
+          </div>
+          <ul>
+            {categories.map((category) => (
+              <li
+                key={category}
+                className={activeCategory === category ? 'active' : ''}
+                onClick={() => setActiveCategory(category)}
+              >
+                {category}
+              </li>
+            ))}
+          </ul>
+          <div
+            style={{
+              marginTop: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}
+          >
+            <button
+              className="close-button"
+              onClick={handleSave}
+              disabled={isSaving}
+              style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                opacity: 1,
+                fontWeight: 600,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '38px'
+              }}
+            >
+              {isSaving ? (
+                <div className="bouncing-loader">
+                  <div></div>
+                  <div></div>
+                  <div></div>
+                </div>
+              ) : (
+                'Save'
+              )}
+            </button>
+            <button
+              className="close-button"
+              onClick={handleCancel}
+              disabled={isSaving}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                opacity: 1
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+        <div className="settings-content">
+          <h3>{activeCategory}</h3>
+          {activeCategory === 'UI' && isManualSettingVisible('ui.theme') && (
             <div className="setting-item">
               <div className="setting-info">
-                <label htmlFor="env">Environment Variables</label>
-                <p>
-                  Set environment variables for the terminal session (e.g.
-                  API_KEY=value). Separate entries with newlines or spaces.
-                </p>
+                <label htmlFor="ui.theme">Theme</label>
+                <p>The color theme for the application.</p>
               </div>
               <div className="setting-control">
-                <textarea
-                  id="env"
-                  value={envInput}
-                  onChange={(e) => {
-                    setEnvInput(e.target.value);
-                    envDirty.current = true;
-                  }}
-                  placeholder="KEY=VALUE ANOTHER_KEY=VALUE"
-                />
+                <select
+                  id="ui.theme"
+                  value={
+                    get(
+                      settings as Record<string, unknown>,
+                      'ui.theme',
+                      '',
+                    ) as string
+                  }
+                  onChange={(e) => handleChange('ui.theme', e.target.value)}
+                >
+                  <option value="">Default</option>
+                  {availableThemes.map((theme) => (
+                    <option key={theme.name} value={theme.name}>
+                      {theme.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div className="setting-item">
-              <div className="setting-info">
-                <label>Language Mappings</label>
-                <p>
-                  Map file extensions to language names for syntax highlighting.
-                </p>
+          )}
+          {filteredSettings
+            .filter((s) => s.category === activeCategory)
+            .map((config) => (
+              <div className="setting-item" key={config.key}>
+                <div className="setting-info">
+                  <label htmlFor={config.key}>{config.label}</label>
+                  <p>{config.description}</p>
+                </div>
+                <div className="setting-control">{renderSetting(config)}</div>
               </div>
-              <div className="setting-control">
-                <LanguageMappingsManager />
+            ))}
+          {activeCategory === 'General' && (
+            <>
+              {isManualSettingVisible('general.env') && (
+              <div className="setting-item">
+                <div className="setting-info">
+                  <label htmlFor="env">Environment Variables</label>
+                  <p>
+                    Set environment variables for the terminal session (e.g.
+                    API_KEY=value). Separate entries with newlines or spaces.
+                  </p>
+                </div>
+                <div className="setting-control">
+                  <textarea
+                    id="env"
+                    value={envInput}
+                    onChange={(e) => {
+                      setEnvInput(e.target.value);
+                      envDirty.current = true;
+                    }}
+                    placeholder="KEY=VALUE ANOTHER_KEY=VALUE"
+                  />
+                </div>
               </div>
-            </div>
-          </>
-        )}
-        {activeCategory === 'MCP Servers' && (
-          <McpServerManager
-            mcpServers={settings.mcpServers || {}}
-            onChange={(newMcpServers) =>
-              handleChange('mcpServers', newMcpServers)
-            }
-          />
-        )}
+              )}
+              {isManualSettingVisible('general.languages') && (
+              <div className="setting-item">
+                <div className="setting-info">
+                  <label>Language Mappings</label>
+                  <p>
+                    Map file extensions to language names for syntax highlighting.
+                  </p>
+                </div>
+                <div className="setting-control">
+                  <LanguageMappingsManager />
+                </div>
+              </div>
+              )}
+            </>
+          )}
+          {activeCategory === 'MCP Servers' && isManualSettingVisible('mcp.servers') && (
+            <McpServerManager
+              mcpServers={settings.mcpServers || {}}
+              onChange={(newMcpServers) =>
+                handleChange('mcpServers', newMcpServers)
+              }
+            />
+          )}
+        </div>
       </div>
     </div>
   );
