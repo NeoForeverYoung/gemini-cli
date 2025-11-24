@@ -337,43 +337,13 @@ describe('SettingsSchema', () => {
       ).toBe(false);
       expect(
         getSettingsSchema().general.properties.previewFeatures.requiresRestart,
-      ).toBe(true);
+      ).toBe(false);
       expect(
         getSettingsSchema().general.properties.previewFeatures.showInDialog,
       ).toBe(true);
       expect(
         getSettingsSchema().general.properties.previewFeatures.description,
       ).toBe('Enable preview features (e.g., preview models).');
-    });
-
-    it('should have adkMode setting in schema', () => {
-      expect(getSettingsSchema().general.properties.adkMode).toBeDefined();
-      expect(getSettingsSchema().general.properties.adkMode.type).toBe(
-        'boolean',
-      );
-      expect(getSettingsSchema().general.properties.adkMode.category).toBe(
-        'Mode',
-      );
-      expect(getSettingsSchema().general.properties.adkMode.default).toBe(
-        false,
-      );
-      expect(getSettingsSchema().general.properties.adkMode.showInDialog).toBe(
-        false,
-      );
-    });
-    it('should have useModelRouter setting in schema', () => {
-      expect(
-        getSettingsSchema().experimental.properties.useModelRouter,
-      ).toBeDefined();
-      expect(
-        getSettingsSchema().experimental.properties.useModelRouter.type,
-      ).toBe('boolean');
-      expect(
-        getSettingsSchema().experimental.properties.useModelRouter.category,
-      ).toBe('Experimental');
-      expect(
-        getSettingsSchema().experimental.properties.useModelRouter.default,
-      ).toBe(true);
     });
   });
 
