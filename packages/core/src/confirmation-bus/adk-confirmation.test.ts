@@ -53,7 +53,6 @@ describe('ADK Tool Confirmation Flow', () => {
       onToolCallsUpdate,
       onAllToolCallsComplete,
       getPreferredEditor: () => undefined,
-      onEditorClose: () => {},
     });
     // Ensure scheduler is used to avoid unused variable error
     expect(scheduler).toBeDefined();
