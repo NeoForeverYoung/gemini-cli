@@ -273,12 +273,6 @@ export const AppContainer = (props: AppContainerProps) => {
       await config.initialize();
       setConfigInitialized(true);
     })();
-    registerCleanup(async () => {
-      // Turn off mouse scroll.
-      disableMouseEvents();
-      const ideClient = await IdeClient.getInstance();
-      await ideClient.disconnect();
-    });
   }, [config]);
 
   useEffect(
@@ -705,6 +699,12 @@ Logging in with Google... Please restart Gemini CLI to continue.
     handleApprovalModeChange,
     activePtyId,
     loopDetectionConfirmationRequest,
+    backgroundShellCount,
+    isBackgroundShellVisible,
+    toggleBackgroundShell,
+    backgroundCurrentShell,
+    backgroundShells,
+    killBackgroundShell,
   } = useGeminiStream(
     config.getGeminiClient(),
     historyManager.history,
@@ -733,6 +733,19 @@ Logging in with Google... Please restart Gemini CLI to continue.
     onApprovalModeChange: handleApprovalModeChange,
   });
 
+  useEffect(() => {
+    registerCleanup(async () => {
+      // Turn off mouse scroll.
+      disableMouseEvents();
+      // Kill all background shells
+      for (const pid of backgroundShells.keys()) {
+        ShellExecutionService.kill(pid);
+      }
+      const ideClient = await IdeClient.getInstance();
+      await ideClient.disconnect();
+    });
+  }, [config, backgroundShells]);
+
   const {
     messageQueue,
     addMessage,
@@ -744,6 +757,49 @@ Logging in with Google... Please restart Gemini CLI to continue.
     streamingState,
     submitQuery,
   });
+
+  const [activeBackgroundShellPid, setActiveBackgroundShellPid] = useState<
+    number | null
+  >(null);
+  const [isBackgroundShellListOpen, setIsBackgroundShellListOpen] =
+    useState(false);
+
+  useEffect(() => {
+    if (backgroundShells.size === 0) {
+      if (activeBackgroundShellPid !== null) {
+        setActiveBackgroundShellPid(null);
+      }
+      if (isBackgroundShellListOpen) {
+        setIsBackgroundShellListOpen(false);
+      }
+    } else if (
+      activeBackgroundShellPid === null ||
+      !backgroundShells.has(activeBackgroundShellPid)
+    ) {
+      // If active shell is closed or none selected, select the first one (last added usually, or just first in iteration)
+      setActiveBackgroundShellPid(backgroundShells.keys().next().value ?? null);
+    }
+  }, [backgroundShells, activeBackgroundShellPid, backgroundShellCount]);
+
+  const visibleBackgroundShell =
+    isBackgroundShellVisible &&
+    activeBackgroundShellPid !== null &&
+    backgroundShells.has(activeBackgroundShellPid)
+      ? backgroundShells.get(activeBackgroundShellPid)
+      : undefined;
+
+  useEffect(() => {
+    if (embeddedShellFocused) {
+      if (!isBackgroundShellVisible || backgroundShells.size === 0) {
+        setEmbeddedShellFocused(false);
+      }
+    }
+  }, [
+    isBackgroundShellVisible,
+    backgroundShells,
+    embeddedShellFocused,
+    backgroundShellCount,
+  ]);
 
   cancelHandlerRef.current = useCallback(
     (shouldRestorePrompt: boolean = true) => {
@@ -830,9 +886,18 @@ Logging in with Google... Please restart Gemini CLI to continue.
   }, [buffer, terminalWidth, terminalHeight]);
 
   // Compute available terminal height based on controls measurement
+  const backgroundShellHeight =
+    isBackgroundShellVisible && backgroundShells.size > 0
+      ? Math.max(Math.floor(terminalHeight * 0.3), 5)
+      : 0;
+
   const availableTerminalHeight = Math.max(
     0,
-    terminalHeight - controlsHeight - staticExtraHeight - 2,
+    terminalHeight -
+      controlsHeight -
+      staticExtraHeight -
+      2 -
+      backgroundShellHeight,
   );
 
   config.setShellExecutionConfig({
@@ -1170,8 +1235,34 @@ Logging in with Google... Please restart Gemini CLI to continue.
       ) {
         setConstrainHeight(false);
       } else if (keyMatchers[Command.TOGGLE_SHELL_INPUT_FOCUS](key)) {
-        if (activePtyId || embeddedShellFocused) {
+        if (activePtyId || embeddedShellFocused || visibleBackgroundShell) {
           setEmbeddedShellFocused((prev) => !prev);
+        }
+      } else if (keyMatchers[Command.TOGGLE_BACKGROUND_SHELL](key)) {
+        if (activePtyId) {
+          backgroundCurrentShell();
+        } else {
+          toggleBackgroundShell();
+          if (!isBackgroundShellVisible) {
+            // We are about to show it, so focus it
+            setEmbeddedShellFocused(true);
+          }
+        }
+      } else if (keyMatchers[Command.TOGGLE_BACKGROUND_SHELL_LIST](key)) {
+        if (backgroundShells.size > 0) {
+          // Only toggle if shells exist
+          if (!isBackgroundShellVisible) {
+            toggleBackgroundShell();
+          }
+          if (!embeddedShellFocused) {
+            setEmbeddedShellFocused(true);
+          }
+          // If already focused and list open, maybe close it? Or toggle?
+          // The behavior requested is global Ctrl+O opens the list.
+          // Let's make it a toggle or an open.
+          // "i need to press ctrl+f inorder to press ctrl+o" -> user implies it should just work.
+          // So if not visible/focused, we make it visible/focused AND open the list.
+          setIsBackgroundShellListOpen(true);
         }
       }
     },
@@ -1193,6 +1284,13 @@ Logging in with Google... Please restart Gemini CLI to continue.
       setCopyModeEnabled,
       copyModeEnabled,
       isAlternateBuffer,
+      backgroundCurrentShell,
+      toggleBackgroundShell,
+      visibleBackgroundShell,
+      backgroundShells,
+      isBackgroundShellVisible,
+      isBackgroundShellListOpen,
+      setIsBackgroundShellListOpen,
     ],
   );
 
@@ -1454,6 +1552,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
       isRestarting,
       extensionsUpdateState,
       activePtyId,
+      backgroundShellCount,
       embeddedShellFocused,
       showDebugProfiler,
       customDialog,
@@ -1464,6 +1563,10 @@ Logging in with Google... Please restart Gemini CLI to continue.
         warningText: warningBannerText,
       },
       bannerVisible,
+      backgroundShells,
+      activeBackgroundShellPid,
+      backgroundShellHeight,
+      isBackgroundShellListOpen,
     }),
     [
       isThemeDialogOpen,
@@ -1544,6 +1647,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
       currentModel,
       extensionsUpdateState,
       activePtyId,
+      backgroundShellCount,
       historyManager,
       embeddedShellFocused,
       showDebugProfiler,
@@ -1555,6 +1659,9 @@ Logging in with Google... Please restart Gemini CLI to continue.
       defaultBannerText,
       warningBannerText,
       bannerVisible,
+      visibleBackgroundShell,
+      backgroundShellHeight,
+      isBackgroundShellListOpen,
     ],
   );
 
@@ -1594,6 +1701,9 @@ Logging in with Google... Please restart Gemini CLI to continue.
       handleApiKeyCancel,
       setBannerVisible,
       setEmbeddedShellFocused,
+      killBackgroundShell,
+      setActiveBackgroundShellPid,
+      setIsBackgroundShellListOpen,
     }),
     [
       handleThemeSelect,
@@ -1625,6 +1735,9 @@ Logging in with Google... Please restart Gemini CLI to continue.
       handleApiKeyCancel,
       setBannerVisible,
       setEmbeddedShellFocused,
+      killBackgroundShell,
+      setActiveBackgroundShellPid,
+      setIsBackgroundShellListOpen,
     ],
   );
 

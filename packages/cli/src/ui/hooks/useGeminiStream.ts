@@ -77,6 +77,12 @@ enum StreamProcessingStatus {
 
 const EDIT_TOOL_NAMES = new Set(['replace', WRITE_FILE_TOOL_NAME]);
 
+interface ToolResponseWithParts {
+  responseParts?: unknown;
+  llmContent?: unknown;
+  data?: { pid?: number; command?: string; initialOutput?: string };
+}
+
 function showCitations(settings: LoadedSettings): boolean {
   const enabled = settings?.merged?.ui?.showCitations;
   if (enabled !== undefined) {
@@ -211,7 +217,17 @@ export const useGeminiStream = (
     await done;
     setIsResponding(false);
   }, []);
-  const { handleShellCommand, activeShellPtyId } = useShellCommandProcessor(
+  const {
+    handleShellCommand,
+    activeShellPtyId,
+    backgroundShellCount,
+    isBackgroundShellVisible,
+    toggleBackgroundShell,
+    backgroundCurrentShell,
+    backgroundShells,
+    registerBackgroundShell,
+    killBackgroundShell,
+  } = useShellCommandProcessor(
     addItem,
     setPendingHistoryItem,
     onExec,
@@ -221,6 +237,7 @@ export const useGeminiStream = (
     setShellInputFocused,
     terminalWidth,
     terminalHeight,
+    activeToolPtyId,
   );
 
   const activePtyId = activeShellPtyId || activeToolPtyId;
@@ -1106,8 +1123,11 @@ export const useGeminiStream = (
               const completedOrCancelledCall = tc as
                 | TrackedCompletedToolCall
                 | TrackedCancelledToolCall;
+              const response =
+                completedOrCancelledCall.response as ToolResponseWithParts;
               return (
-                completedOrCancelledCall.response?.responseParts !== undefined
+                response?.responseParts !== undefined ||
+                response?.llmContent !== undefined
               );
             }
             return false;
@@ -1129,6 +1149,25 @@ export const useGeminiStream = (
           t.status === 'success' &&
           !processedMemoryToolsRef.current.has(t.request.callId),
       );
+
+      // Handle backgrounded shell tools
+      completedAndReadyToSubmitTools.forEach((t) => {
+        const isShell = t.request.name === 'run_shell_command';
+        // Access result from the tracked tool call response
+        const response = t.response as ToolResponseWithParts;
+        const data = response?.data;
+
+        // Use data.pid or fallback to t.pid (preserved from executing state)
+        const pid = data?.pid ?? (t as { pid?: number }).pid;
+
+        if (isShell && pid) {
+          registerBackgroundShell(
+            pid,
+            data?.command || 'shell',
+            data?.initialOutput || '',
+          );
+        }
+      });
 
       if (newSuccessfulMemorySaves.length > 0) {
         // Perform the refresh only if there are new ones.
@@ -1169,9 +1208,17 @@ export const useGeminiStream = (
         if (geminiClient) {
           // We need to manually add the function responses to the history
           // so the model knows the tools were cancelled.
-          const combinedParts = geminiTools.flatMap(
-            (toolCall) => toolCall.response.responseParts,
-          );
+          const combinedParts = geminiTools.flatMap((toolCall) => {
+            const response = toolCall.response as any;
+            if (response.responseParts) {
+              return response.responseParts as Part[];
+            }
+            const content = response.llmContent;
+            if (typeof content === 'string') {
+              return [{ text: content }];
+            }
+            return content as Part[];
+          });
           geminiClient.addHistory({
             role: 'user',
             parts: combinedParts,
@@ -1185,9 +1232,21 @@ export const useGeminiStream = (
         return;
       }
 
-      const responsesToSend: Part[] = geminiTools.flatMap(
-        (toolCall) => toolCall.response.responseParts,
-      );
+      const responsesToSend: Part[] = geminiTools.flatMap((toolCall) => {
+        const response = toolCall.response as ToolResponseWithParts;
+        if (response.responseParts) {
+          return response.responseParts as Part[];
+        }
+        const content = response.llmContent;
+        if (typeof content === 'string') {
+          return [{ text: content }];
+        }
+        // PartListUnion can be string | Array<string | Part>.
+        // We need to normalize to Part[].
+        return (content as Array<string | Part>).map((item) =>
+          typeof item === 'string' ? { text: item } : item,
+        );
+      });
       const callIdsToMarkAsSubmitted = geminiTools.map(
         (toolCall) => toolCall.request.callId,
       );
@@ -1218,6 +1277,7 @@ export const useGeminiStream = (
       performMemoryRefresh,
       modelSwitchedFromQuotaError,
       addItem,
+      registerBackgroundShell,
     ],
   );
 
@@ -1359,5 +1419,11 @@ export const useGeminiStream = (
     handleApprovalModeChange,
     activePtyId,
     loopDetectionConfirmationRequest,
+    backgroundShellCount,
+    isBackgroundShellVisible,
+    toggleBackgroundShell,
+    backgroundCurrentShell,
+    backgroundShells,
+    killBackgroundShell,
   };
 };

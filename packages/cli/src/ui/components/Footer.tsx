@@ -39,6 +39,7 @@ export const Footer: React.FC = () => {
     nightly,
     isTrustedFolder,
     mainAreaWidth,
+    backgroundShellCount,
   } = {
     model: uiState.currentModel,
     targetDir: config.getTargetDir(),
@@ -52,6 +53,7 @@ export const Footer: React.FC = () => {
     nightly: uiState.nightly,
     isTrustedFolder: uiState.isTrustedFolder,
     mainAreaWidth: uiState.mainAreaWidth,
+    backgroundShellCount: uiState.backgroundShellCount,
   };
 
   const showMemoryUsage =
@@ -158,6 +160,12 @@ export const Footer: React.FC = () => {
               )}
             </Text>
             {showMemoryUsage && <MemoryUsageDisplay />}
+            {backgroundShellCount > 0 && (
+              <Text color={theme.text.secondary}>
+                {' '}
+                [BG: {backgroundShellCount}]
+              </Text>
+            )}
           </Box>
           <Box alignItems="center">
             {corgiMode && (

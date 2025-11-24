@@ -1207,6 +1207,7 @@ export class CoreToolScheduler {
                   errorType: undefined,
                   outputFile,
                   contentLength,
+                  data: toolResult.data,
                 };
                 this.setStatusInternal(
                   callId,
