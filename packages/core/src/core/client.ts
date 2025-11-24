@@ -122,32 +122,8 @@ export class GeminiClient {
     this.getChat().stripThoughtsFromHistory();
   }
 
-  async setHistory(
-    history: Content[],
-    { stripThoughts = false }: { stripThoughts?: boolean } = {},
-  ) {
-    const historyToSet = stripThoughts
-      ? history.map((content) => {
-          const newContent = { ...content };
-          if (newContent.parts) {
-            newContent.parts = newContent.parts.map((part) => {
-              if (
-                part &&
-                typeof part === 'object' &&
-                'thoughtSignature' in part
-              ) {
-                const newPart = { ...part };
-                delete (newPart as { thoughtSignature?: string })
-                  .thoughtSignature;
-                return newPart;
-              }
-              return part;
-            });
-          }
-          return newContent;
-        })
-      : history;
-    await this.getChat().setHistory(historyToSet);
+  async setHistory(history: Content[]) {
+    await this.getChat().setHistory(history);
     this.forceFullIdeContext = true;
   }
 
@@ -187,7 +163,7 @@ export class GeminiClient {
       return;
     }
 
-    await this.addHistory({
+    await this.getChat().addHistory({
       role: 'user',
       parts: [{ text: await getDirectoryContextString(this.config) }],
     });
@@ -219,13 +195,16 @@ export class GeminiClient {
     try {
       const userMemory = this.config.getUserMemory();
       const systemInstruction = getCoreSystemPrompt(this.config, userMemory);
-      return new GeminiChat(
+      const chat = new GeminiChat(
         this.config,
         systemInstruction,
         tools,
         history,
         resumedSessionData,
       );
+      // TODO: do we need this for the main path, or only ADK?
+      await chat.setHistory(history);
+      return chat;
     } catch (error) {
       await reportError(
         error,
