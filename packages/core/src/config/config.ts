@@ -48,7 +48,6 @@ import {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   DEFAULT_GEMINI_FLASH_MODEL,
   DEFAULT_GEMINI_MODEL,
-  DEFAULT_GEMINI_MODEL_AUTO,
   DEFAULT_THINKING_MODE,
 } from './models.js';
 import { shouldAttemptBrowserLaunch } from '../utils/browser.js';
@@ -288,7 +287,6 @@ export interface ConfigParameters {
   useWriteTodos?: boolean;
   policyEngineConfig?: PolicyEngineConfig;
   output?: OutputSettings;
-  useModelRouter?: boolean;
   enableMessageBusIntegration?: boolean;
   disableModelRouterForAuth?: AuthType[];
   codebaseInvestigatorSettings?: CodebaseInvestigatorSettings;
@@ -306,6 +304,7 @@ export interface ConfigParameters {
   hooks?: {
     [K in HookEventName]?: HookDefinition[];
   };
+  previewFeatures?: boolean;
 }
 
 export class Config {
@@ -358,6 +357,7 @@ export class Config {
   private readonly cwd: string;
   private readonly bugCommand: BugCommandSettings | undefined;
   private model: string;
+  private previewFeatures: boolean | undefined;
   private readonly noBrowser: boolean;
   private readonly folderTrust: boolean;
   private ideMode: boolean;
@@ -401,9 +401,6 @@ export class Config {
   private readonly messageBus: MessageBus;
   private readonly policyEngine: PolicyEngine;
   private readonly outputSettings: OutputSettings;
-  private useModelRouter: boolean;
-  private readonly initialUseModelRouter: boolean;
-  private readonly disableModelRouterForAuth?: AuthType[];
   private readonly enableMessageBusIntegration: boolean;
   private readonly codebaseInvestigatorSettings: CodebaseInvestigatorSettings;
   private readonly continueOnFailedApiCall: boolean;
@@ -412,6 +409,7 @@ export class Config {
   readonly fakeResponses?: string;
   readonly recordResponses?: string;
   private readonly disableYoloMode: boolean;
+  private pendingIncludeDirectories: string[];
   private readonly enableHooks: boolean;
   private readonly enableDynamicSystemPrompt: boolean;
   private readonly hooks:
@@ -420,6 +418,9 @@ export class Config {
   private experiments: Experiments | undefined;
   private experimentsPromise: Promise<void> | undefined;
 
+  private previewModelFallbackMode = false;
+  private previewModelBypassMode = false;
+
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
     this.embeddingModel =
@@ -427,10 +428,9 @@ export class Config {
     this.fileSystemService = new StandardFileSystemService();
     this.sandbox = params.sandbox;
     this.targetDir = path.resolve(params.targetDir);
-    this.workspaceContext = new WorkspaceContext(
-      this.targetDir,
-      params.includeDirectories ?? [],
-    );
+    this.folderTrust = params.folderTrust ?? false;
+    this.workspaceContext = new WorkspaceContext(this.targetDir, []);
+    this.pendingIncludeDirectories = params.includeDirectories ?? [];
     this.debugMode = params.debugMode;
     this.question = params.question;
 
@@ -477,6 +477,7 @@ export class Config {
     this.fileDiscoveryService = params.fileDiscoveryService ?? null;
     this.bugCommand = params.bugCommand;
     this.model = params.model;
+    this.previewFeatures = params.previewFeatures ?? undefined;
     this.maxSessionTurns = params.maxSessionTurns ?? -1;
     this.experimentalZedIntegration =
       params.experimentalZedIntegration ?? false;
@@ -515,9 +516,6 @@ export class Config {
     this.enableToolOutputTruncation = params.enableToolOutputTruncation ?? true;
     this.useSmartEdit = params.useSmartEdit ?? true;
     this.useWriteTodos = params.useWriteTodos ?? true;
-    this.initialUseModelRouter = params.useModelRouter ?? false;
-    this.useModelRouter = this.initialUseModelRouter;
-    this.disableModelRouterForAuth = params.disableModelRouterForAuth ?? [];
     this.enableHooks = params.enableHooks ?? false;
     this.enableDynamicSystemPrompt = params.enableDynamicSystemPrompt ?? true;
 
@@ -640,19 +638,11 @@ export class Config {
   }
 
   async refreshAuth(authMethod: AuthType) {
-    this.useModelRouter = this.initialUseModelRouter;
-    if (this.disableModelRouterForAuth?.includes(authMethod)) {
-      this.useModelRouter = false;
-      if (this.model === DEFAULT_GEMINI_MODEL_AUTO) {
-        this.model = DEFAULT_GEMINI_MODEL;
-      }
-    }
-
     // Vertex and Genai have incompatible encryption and sending history with
     // thoughtSignature from Genai to Vertex will fail, we need to strip them
     if (
       this.contentGeneratorConfig?.authType === AuthType.USE_GEMINI &&
-      authMethod === AuthType.LOGIN_WITH_GOOGLE
+      authMethod !== AuthType.USE_GEMINI
     ) {
       // Restore the conversation history to the new client
       this.geminiClient.stripThoughtsFromHistory();
@@ -673,11 +663,22 @@ export class Config {
     // Initialize BaseLlmClient now that the ContentGenerator is available
     this.baseLlmClient = new BaseLlmClient(this.contentGenerator, this);
 
+    const previewFeatures = this.getPreviewFeatures();
+
     const codeAssistServer = getCodeAssistServer(this);
     if (codeAssistServer) {
       this.experimentsPromise = getExperiments(codeAssistServer)
         .then((experiments) => {
           this.setExperiments(experiments);
+
+          // If preview features have not been set and the user authenticated through Google, we enable preview based on remote config only if it's true
+          if (previewFeatures === undefined) {
+            const remotePreviewFeatures =
+              experiments.flags[ExperimentFlags.ENABLE_PREVIEW]?.boolValue;
+            if (remotePreviewFeatures === true) {
+              this.setPreviewFeatures(remotePreviewFeatures);
+            }
+          }
         })
         .catch((e) => {
           debugLogger.error('Failed to fetch experiments', e);
@@ -689,6 +690,17 @@ export class Config {
 
     // Reset the session flag since we're explicitly changing auth and using default model
     this.inFallbackMode = false;
+  }
+
+  async getExperimentsAsync(): Promise<Experiments | undefined> {
+    if (this.experiments) {
+      return this.experiments;
+    }
+    const codeAssistServer = getCodeAssistServer(this);
+    if (codeAssistServer) {
+      return getExperiments(codeAssistServer);
+    }
+    return undefined;
   }
 
   getUserTier(): UserTierId | undefined {
@@ -763,6 +775,26 @@ export class Config {
     this.fallbackModelHandler = handler;
   }
 
+  getFallbackModelHandler(): FallbackModelHandler | undefined {
+    return this.fallbackModelHandler;
+  }
+
+  isPreviewModelFallbackMode(): boolean {
+    return this.previewModelFallbackMode;
+  }
+
+  setPreviewModelFallbackMode(active: boolean): void {
+    this.previewModelFallbackMode = active;
+  }
+
+  isPreviewModelBypassMode(): boolean {
+    return this.previewModelBypassMode;
+  }
+
+  setPreviewModelBypassMode(active: boolean): void {
+    this.previewModelBypassMode = active;
+  }
+
   getMaxSessionTurns(): number {
     return this.maxSessionTurns;
   }
@@ -823,6 +855,14 @@ export class Config {
   }
   getQuestion(): string | undefined {
     return this.question;
+  }
+
+  getPreviewFeatures(): boolean | undefined {
+    return this.previewFeatures;
+  }
+
+  setPreviewFeatures(previewFeatures: boolean) {
+    this.previewFeatures = previewFeatures;
   }
 
   getCoreTools(): string[] | undefined {
@@ -930,6 +970,14 @@ export class Config {
     return this.disableYoloMode || !this.isTrustedFolder();
   }
 
+  getPendingIncludeDirectories(): string[] {
+    return this.pendingIncludeDirectories;
+  }
+
+  clearPendingIncludeDirectories(): void {
+    this.pendingIncludeDirectories = [];
+  }
+
   getShowMemoryUsage(): boolean {
     return this.showMemoryUsage;
   }
@@ -968,6 +1016,17 @@ export class Config {
 
   getGeminiClient(): GeminiClient {
     return this.geminiClient;
+  }
+
+  /**
+   * Updates the system instruction with the latest user memory.
+   * Whenever the user memory (GEMINI.md files) is updated.
+   */
+  async updateSystemInstructionIfInitialized(): Promise<void> {
+    const geminiClient = this.getGeminiClient();
+    if (geminiClient?.isInitialized()) {
+      await geminiClient.updateSystemInstruction();
+    }
   }
 
   getModelRouterService(): ModelRouterService {
@@ -1164,6 +1223,22 @@ export class Config {
     return this.experiments?.flags[ExperimentFlags.USER_CACHING]?.boolValue;
   }
 
+  async getBannerTextNoCapacityIssues(): Promise<string> {
+    await this.ensureExperimentsLoaded();
+    return (
+      this.experiments?.flags[ExperimentFlags.BANNER_TEXT_NO_CAPACITY_ISSUES]
+        ?.stringValue ?? ''
+    );
+  }
+
+  async getBannerTextCapacityIssues(): Promise<string> {
+    await this.ensureExperimentsLoaded();
+    return (
+      this.experiments?.flags[ExperimentFlags.BANNER_TEXT_CAPACITY_ISSUES]
+        ?.stringValue ?? ''
+    );
+  }
+
   private async ensureExperimentsLoaded(): Promise<void> {
     if (!this.experimentsPromise) {
       return;
@@ -1262,10 +1337,6 @@ export class Config {
     return this.outputSettings?.format
       ? this.outputSettings.format
       : OutputFormat.TEXT;
-  }
-
-  getUseModelRouter(): boolean {
-    return this.useModelRouter;
   }
 
   async getGitService(): Promise<GitService> {
@@ -1432,8 +1503,8 @@ export class Config {
     this.experiments = experiments;
     const flagSummaries = Object.entries(experiments.flags ?? {})
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, flag]) => {
-        const summary: Record<string, unknown> = { name };
+      .map(([flagId, flag]) => {
+        const summary: Record<string, unknown> = { flagId };
         if (flag.boolValue !== undefined) {
           summary['boolValue'] = flag.boolValue;
         }
