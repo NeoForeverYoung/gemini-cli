@@ -16,6 +16,7 @@ import { useFlickerDetector } from '../hooks/useFlickerDetector.js';
 import { useAlternateBuffer } from '../hooks/useAlternateBuffer.js';
 import { CopyModeWarning } from '../components/CopyModeWarning.js';
 import { BackgroundShellDisplay } from '../components/BackgroundShellDisplay.js';
+import { StreamingState } from '../types.js';
 
 export const DefaultAppLayout: React.FC = () => {
   const uiState = useUIState();
@@ -44,16 +45,20 @@ export const DefaultAppLayout: React.FC = () => {
         uiState.activeBackgroundShellPid &&
         uiState.backgroundShellHeight > 0 && (
           <Box height={uiState.backgroundShellHeight} flexShrink={0}>
-                      <BackgroundShellDisplay
-                        shells={uiState.backgroundShells}
-                        activePid={uiState.activeBackgroundShellPid}
-                        width={width}
-                        height={uiState.backgroundShellHeight}
-                        isFocused={uiState.embeddedShellFocused}
-                        isListOpenProp={uiState.isBackgroundShellListOpen}
-                      />
-                    </Box>
-                  )}
+            <BackgroundShellDisplay
+              shells={uiState.backgroundShells}
+              activePid={uiState.activeBackgroundShellPid}
+              width={width}
+              height={uiState.backgroundShellHeight}
+              isFocused={
+                uiState.embeddedShellFocused &&
+                !uiState.dialogsVisible &&
+                uiState.streamingState !== StreamingState.WaitingForConfirmation
+              }
+              isListOpenProp={uiState.isBackgroundShellListOpen}
+            />
+          </Box>
+        )}
       <Box
         flexDirection="column"
         ref={uiState.mainControlsRef}

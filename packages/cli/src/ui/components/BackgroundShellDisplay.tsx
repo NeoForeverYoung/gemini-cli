@@ -1,7 +1,16 @@
+/**
+ * @license
+ * Copyright 2025 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import { Box, Text } from 'ink';
 import { useEffect, useState } from 'react';
 import { useUIActions } from '../contexts/UIActionsContext.js';
-import { ShellExecutionService, type AnsiOutput } from '@google/gemini-cli-core';
+import {
+  ShellExecutionService,
+  type AnsiOutput,
+} from '@google/gemini-cli-core';
 import { type BackgroundShell } from '../hooks/shellCommandProcessor.js';
 import { AnsiOutputText } from './AnsiOutput.js';
 import { Command, keyMatchers } from '../keyMatchers.js';
@@ -18,7 +27,7 @@ interface BackgroundShellDisplayProps {
 }
 
 const CONTENT_PADDING_X = 1;
-const RIGHT_TEXT = "Ctrl+B Hide | Ctrl+K Kill";
+const RIGHT_TEXT = 'Ctrl+B Hide | Ctrl+K Kill';
 
 export const BackgroundShellDisplay = ({
   shells,
@@ -28,20 +37,24 @@ export const BackgroundShellDisplay = ({
   isFocused,
   isListOpenProp,
 }: BackgroundShellDisplayProps) => {
-  const { killBackgroundShell, setActiveBackgroundShellPid, setIsBackgroundShellListOpen } = useUIActions();
+  const {
+    killBackgroundShell,
+    setActiveBackgroundShellPid,
+    setIsBackgroundShellListOpen,
+  } = useUIActions();
   const activeShell = shells.get(activePid);
   const [output, setOutput] = useState<string | AnsiOutput>('');
   // Track internal selection for the list view
   const [listSelectionIndex, setListSelectionIndex] = useState(0);
 
   useEffect(() => {
-    if (!activeShell) return;
+    if (!shells.has(activePid)) return;
     // Resize the active PTY
     // 2 for borders, plus padding on both sides
-    const ptyWidth = Math.max(1, width - 2 - (CONTENT_PADDING_X * 2));
+    const ptyWidth = Math.max(1, width - 2 - CONTENT_PADDING_X * 2);
     const ptyHeight = Math.max(1, height - 3); // -2 for border, -1 for header
-    ShellExecutionService.resizePty(activeShell.pid, ptyWidth, ptyHeight);
-  }, [activeShell?.pid, width, height]);
+    ShellExecutionService.resizePty(activePid, ptyWidth, ptyHeight);
+  }, [activePid, width, height, shells]);
 
   useEffect(() => {
     if (activeShell) {
@@ -66,9 +79,11 @@ export const BackgroundShellDisplay = ({
 
       if (isListOpenProp) {
         const shellPids = Array.from(shells.keys());
-        
+
         if (key.name === 'up') {
-          setListSelectionIndex((prev) => (prev - 1 + shellPids.length) % shellPids.length);
+          setListSelectionIndex(
+            (prev) => (prev - 1 + shellPids.length) % shellPids.length,
+          );
           return;
         }
         if (key.name === 'down') {
@@ -194,13 +209,13 @@ export const BackgroundShellDisplay = ({
   const renderTabs = () => {
     const tabs = [];
     const shellList = Array.from(shells.values());
-    
+
     // Calculate available width for tabs
     // width - borders(2) - padding(2) - rightText - pidText - spacing
     // PID text approx: " (PID: 123456) (Focused)" -> ~25 chars
     const pidTextEstimate = 25;
     const availableWidth = width - 4 - RIGHT_TEXT.length - pidTextEstimate;
-    
+
     let currentWidth = 0;
     let overflow = false;
 
@@ -223,20 +238,16 @@ export const BackgroundShellDisplay = ({
           bold={isActive}
         >
           {label}
-        </Text>
+        </Text>,
       );
       currentWidth += labelWidth;
     }
 
     if (overflow) {
       tabs.push(
-        <Text
-          key="overflow"
-          color="yellow"
-          bold
-        >
-           {' ... (Ctrl+O) '}
-        </Text>
+        <Text key="overflow" color="yellow" bold>
+          {' ... (Ctrl+O) '}
+        </Text>,
       );
     }
 
@@ -247,7 +258,9 @@ export const BackgroundShellDisplay = ({
     const shellList = Array.from(shells.values());
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold underline>Select Process (Enter to select, Esc to cancel):</Text>
+        <Text bold underline>
+          Select Process (Enter to select, Esc to cancel):
+        </Text>
         {shellList.map((shell, index) => {
           const isSelected = index === listSelectionIndex;
           return (
@@ -256,7 +269,8 @@ export const BackgroundShellDisplay = ({
               color={isSelected ? 'black' : 'white'}
               backgroundColor={isSelected ? 'green' : undefined}
             >
-              {isSelected ? '> ' : '  '} {index + 1}: {shell.command} (PID: {shell.pid})
+              {isSelected ? '> ' : '  '} {index + 1}: {shell.command} (PID:{' '}
+              {shell.pid})
             </Text>
           );
         })}
@@ -265,7 +279,13 @@ export const BackgroundShellDisplay = ({
   };
 
   return (
-    <Box flexDirection="column" height="100%" width="100%" borderStyle="single" borderColor={isFocused ? 'blue' : undefined}>
+    <Box
+      flexDirection="column"
+      height="100%"
+      width="100%"
+      borderStyle="single"
+      borderColor={isFocused ? 'blue' : undefined}
+    >
       <Box
         flexDirection="row"
         justifyContent="space-between"
@@ -279,25 +299,24 @@ export const BackgroundShellDisplay = ({
       >
         <Box flexDirection="row">
           {renderTabs()}
-          <Text bold> (PID: {activeShell?.pid}) {isFocused ? '(Focused)' : ''}</Text>
+          <Text bold>
+            {' '}
+            (PID: {activeShell?.pid}) {isFocused ? '(Focused)' : ''}
+          </Text>
         </Box>
-        <Text color="gray">
-          {RIGHT_TEXT} | Ctrl+O List
-        </Text>
+        <Text color="gray">{RIGHT_TEXT} | Ctrl+O List</Text>
       </Box>
       <Box flexGrow={1} overflow="hidden" paddingX={CONTENT_PADDING_X}>
         {isListOpenProp ? (
           renderProcessList()
+        ) : typeof output === 'string' ? (
+          <Text>{output}</Text>
         ) : (
-          typeof output === 'string' ? (
-            <Text>{output}</Text>
-          ) : (
-            <AnsiOutputText
-              data={output}
-              width={Math.max(1, width - 2 - (CONTENT_PADDING_X * 2))}
-              availableTerminalHeight={Math.max(1, height - 3)}
-            />
-          )
+          <AnsiOutputText
+            data={output}
+            width={Math.max(1, width - 2 - CONTENT_PADDING_X * 2)}
+            availableTerminalHeight={Math.max(1, height - 3)}
+          />
         )}
       </Box>
     </Box>

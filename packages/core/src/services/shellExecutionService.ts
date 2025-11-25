@@ -100,6 +100,14 @@ export type ShellOutputEvent =
       type: 'binary_progress';
       /** The total number of bytes received so far. */
       bytesReceived: number;
+    }
+  | {
+      /** Signals that the process has exited. */
+      type: 'exit';
+      /** The exit code of the process, if any. */
+      exitCode: number | null;
+      /** The signal that terminated the process, if any. */
+      signal: number | null;
     };
 
 interface ActivePty {
@@ -459,7 +467,11 @@ export class ShellExecutionService {
         });
         headlessTerminal.scrollToTop();
 
-        this.activePtys.set(ptyProcess.pid, { ptyProcess, headlessTerminal, shellExecutionConfig });
+        this.activePtys.set(ptyProcess.pid, {
+          ptyProcess,
+          headlessTerminal,
+          shellExecutionConfig,
+        });
 
         let processingChain = Promise.resolve();
         let decoder: TextDecoder | null = null;
@@ -497,7 +509,11 @@ export class ShellExecutionService {
           const defaultFg = shellExecutionConfig.defaultFg || '';
           const defaultBg = shellExecutionConfig.defaultBg || '';
           if (shellExecutionConfig.showColor) {
-            newOutput = serializeTerminalToObject(headlessTerminal, defaultFg, defaultBg);
+            newOutput = serializeTerminalToObject(
+              headlessTerminal,
+              defaultFg,
+              defaultBg,
+            );
           } else {
             const lines: AnsiOutput = [];
             for (let y = 0; y < headlessTerminal.rows; y++) {
@@ -663,6 +679,19 @@ export class ShellExecutionService {
             this.activePtys.delete(ptyProcess.pid);
             this.activeResolvers.delete(ptyProcess.pid);
 
+            const event: ShellOutputEvent = {
+              type: 'exit',
+              exitCode,
+              signal: signal ?? null,
+            };
+            const listeners = ShellExecutionService.activeListeners.get(
+              ptyProcess.pid,
+            );
+            if (listeners) {
+              listeners.forEach((listener) => listener(event));
+            }
+            this.activeListeners.delete(ptyProcess.pid);
+
             const finalize = () => {
               render(true);
               const finalBuffer = Buffer.concat(outputChunks);
@@ -786,6 +815,31 @@ export class ShellExecutionService {
   }
 
   /**
+   * Registers a callback to be invoked when the process with the given PID exits.
+   * This attaches directly to the PTY's exit event.
+   *
+   * @param pid The process ID to watch.
+   * @param callback The function to call on exit.
+   */
+  static onExit(
+    pid: number,
+    callback: (exitCode: number, signal?: number) => void,
+  ): void {
+    const activePty = this.activePtys.get(pid);
+    if (activePty) {
+      // We rely on node-pty's event emitter.
+      // Since this is added *after* the process is spawned (usually upon backgrounding),
+      // it will be an additional listener.
+      const disposable = activePty.ptyProcess.onExit(
+        ({ exitCode, signal }: { exitCode: number; signal?: number }) => {
+          callback(exitCode, signal);
+          disposable.dispose();
+        },
+      );
+    }
+  }
+
+  /**
    * Kills a process by its PID.
    *
    * @param pid The process ID to kill.
@@ -809,7 +863,6 @@ export class ShellExecutionService {
       }
       this.activePtys.delete(pid);
       this.activeResolvers.delete(pid);
-      this.activeListeners.delete(pid);
     }
   }
 
@@ -824,7 +877,7 @@ export class ShellExecutionService {
     if (resolve) {
       const activePty = this.activePtys.get(pid);
       let output = '';
-      let rawOutput = Buffer.from('');
+      const rawOutput = Buffer.from('');
 
       if (activePty) {
         output = getFullBufferText(activePty.headlessTerminal);
@@ -863,11 +916,15 @@ export class ShellExecutionService {
     // Send current buffer content immediately
     const activePty = this.activePtys.get(pid);
     if (activePty) {
-       // Use serializeTerminalToObject to preserve colors and structure
-       const bufferData = serializeTerminalToObject(activePty.headlessTerminal, activePty.shellExecutionConfig.defaultFg || '', activePty.shellExecutionConfig.defaultBg || '');
-       if (bufferData && bufferData.length > 0) {
-           listener({ type: 'data', chunk: bufferData });
-       }
+      // Use serializeTerminalToObject to preserve colors and structure
+      const bufferData = serializeTerminalToObject(
+        activePty.headlessTerminal,
+        activePty.shellExecutionConfig.defaultFg || '',
+        activePty.shellExecutionConfig.defaultBg || '',
+      );
+      if (bufferData && bufferData.length > 0) {
+        listener({ type: 'data', chunk: bufferData });
+      }
     }
 
     return () => {
@@ -916,7 +973,11 @@ export class ShellExecutionService {
 
     // Force emit the new state after resize
     if (activePty) {
-      const bufferData = serializeTerminalToObject(activePty.headlessTerminal, activePty.shellExecutionConfig.defaultFg || '', activePty.shellExecutionConfig.defaultBg || '');
+      const bufferData = serializeTerminalToObject(
+        activePty.headlessTerminal,
+        activePty.shellExecutionConfig.defaultFg || '',
+        activePty.shellExecutionConfig.defaultBg || '',
+      );
       const event: ShellOutputEvent = { type: 'data', chunk: bufferData };
       const listeners = ShellExecutionService.activeListeners.get(pid);
       if (listeners) {

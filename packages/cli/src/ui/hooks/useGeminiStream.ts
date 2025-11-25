@@ -1209,7 +1209,7 @@ export const useGeminiStream = (
           // We need to manually add the function responses to the history
           // so the model knows the tools were cancelled.
           const combinedParts = geminiTools.flatMap((toolCall) => {
-            const response = toolCall.response as any;
+            const response = toolCall.response as ToolResponseWithParts;
             if (response.responseParts) {
               return response.responseParts as Part[];
             }

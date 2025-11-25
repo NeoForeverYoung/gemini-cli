@@ -85,11 +85,12 @@ export const useShellCommandProcessor = (
   activeToolPtyId?: number,
 ) => {
   const [activeShellPtyId, setActiveShellPtyId] = useState<number | null>(null);
-  
+
   // Background shell state management
   const backgroundShellsRef = useRef<Map<number, BackgroundShell>>(new Map());
   const [backgroundShellCount, setBackgroundShellCount] = useState(0);
-  const [isBackgroundShellVisible, setIsBackgroundShellVisible] = useState(false);
+  const [isBackgroundShellVisible, setIsBackgroundShellVisible] =
+    useState(false);
   // Used to force re-render when background shell output updates while visible
   const [, setTick] = useState(0);
 
@@ -141,7 +142,19 @@ export const useShellCommandProcessor = (
         binaryBytesReceived: 0,
       });
 
-      // Subscribe to future updates
+      // Subscribe to process exit directly
+      ShellExecutionService.onExit(pid, () => {
+        if (backgroundShellsRef.current.has(pid)) {
+          backgroundShellsRef.current.delete(pid);
+          setBackgroundShellCount(backgroundShellsRef.current.size);
+          if (backgroundShellsRef.current.size === 0) {
+            setIsBackgroundShellVisible(false);
+          }
+          setTick((t) => t + 1);
+        }
+      });
+
+      // Subscribe to future updates (data only)
       ShellExecutionService.subscribe(pid, (event) => {
         const shell = backgroundShellsRef.current.get(pid);
         if (!shell) return;
@@ -241,6 +254,7 @@ export const useShellCommandProcessor = (
             targetDir,
             (event) => {
               let shouldUpdate = false;
+
               switch (event.type) {
                 case 'data':
                   // Do not process text data if we've already switched to binary mode.
@@ -274,18 +288,21 @@ export const useShellCommandProcessor = (
               }
 
               // Update background shell state if applicable
-              if (executionPid && backgroundShellsRef.current.has(executionPid)) {
-                 backgroundShellsRef.current.set(executionPid, {
-                   pid: executionPid,
-                   command: rawQuery as string,
-                   output: cumulativeStdout,
-                   isBinary: isBinaryStream,
-                   binaryBytesReceived,
-                 });
-                 // Force re-render if this is the visible background shell
-                 setTick(t => t + 1);
-                 // If backgrounded, we don't update pending history item anymore
-                 return;
+              if (
+                executionPid &&
+                backgroundShellsRef.current.has(executionPid)
+              ) {
+                backgroundShellsRef.current.set(executionPid, {
+                  pid: executionPid,
+                  command: rawQuery as string,
+                  output: cumulativeStdout,
+                  isBinary: isBinaryStream,
+                  binaryBytesReceived,
+                });
+                // Force re-render if this is the visible background shell
+                setTick((t) => t + 1);
+                // If backgrounded, we don't update pending history item anymore
+                return;
               }
 
               // Compute the display string based on the *current* state.
@@ -346,16 +363,27 @@ export const useShellCommandProcessor = (
               setPendingHistoryItem(null);
 
               if (result.backgrounded && result.pid) {
-                 // Add to background shells
-                 backgroundShellsRef.current.set(result.pid, {
-                   pid: result.pid,
-                   command: rawQuery as string,
-                   output: cumulativeStdout,
-                   isBinary: isBinaryStream,
-                   binaryBytesReceived
-                 });
-                 setBackgroundShellCount(backgroundShellsRef.current.size);
-                 setActiveShellPtyId(null);
+                // Add to background shells
+                backgroundShellsRef.current.set(result.pid, {
+                  pid: result.pid,
+                  command: rawQuery as string,
+                  output: cumulativeStdout,
+                  isBinary: isBinaryStream,
+                  binaryBytesReceived,
+                });
+                setBackgroundShellCount(backgroundShellsRef.current.size);
+                setActiveShellPtyId(null);
+
+                ShellExecutionService.onExit(result.pid, () => {
+                  if (backgroundShellsRef.current.has(result.pid!)) {
+                    backgroundShellsRef.current.delete(result.pid!);
+                    setBackgroundShellCount(backgroundShellsRef.current.size);
+                    if (backgroundShellsRef.current.size === 0) {
+                      setIsBackgroundShellVisible(false);
+                    }
+                    setTick((t) => t + 1);
+                  }
+                });
               }
 
               let mainContent: string;
@@ -439,7 +467,7 @@ export const useShellCommandProcessor = (
               if (pwdFilePath && fs.existsSync(pwdFilePath)) {
                 fs.unlinkSync(pwdFilePath);
               }
-              
+
               // If it wasn't backgrounded, clear the active PTY
               // If it WAS backgrounded, we cleared activePtyId in the .then block, but we check here too
               // to ensure we don't clear it if another command somehow started? (unlikely due to await)
@@ -494,15 +522,15 @@ export const useShellCommandProcessor = (
   );
 
   const backgroundShells = backgroundShellsRef.current;
-  return { 
-    handleShellCommand, 
-    activeShellPtyId, 
+  return {
+    handleShellCommand,
+    activeShellPtyId,
     backgroundShellCount,
     isBackgroundShellVisible,
     toggleBackgroundShell,
     backgroundCurrentShell,
     registerBackgroundShell,
     killBackgroundShell,
-    backgroundShells
+    backgroundShells,
   };
 };

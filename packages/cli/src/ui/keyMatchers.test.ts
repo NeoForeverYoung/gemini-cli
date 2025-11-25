@@ -75,14 +75,14 @@ describe('keyMatchers', () => {
       key.name === 'return' && !key.ctrl,
     [Command.ACCEPT_SUGGESTION_REVERSE_SEARCH]: (key: Key) =>
       key.name === 'tab',
-  [Command.TOGGLE_SHELL_INPUT_FOCUS]: (key: Key) =>
-    key.name === 'f' && key.ctrl === true,
-  [Command.TOGGLE_BACKGROUND_SHELL]: (key: Key) =>
-    key.name === 'b' && key.ctrl === true,
-  [Command.TOGGLE_BACKGROUND_SHELL_LIST]: (key: Key) =>
-    key.name === 'o' && key.ctrl === true,
+    [Command.TOGGLE_SHELL_INPUT_FOCUS]: (key: Key) =>
+      key.name === 'f' && key.ctrl === true,
+    [Command.TOGGLE_BACKGROUND_SHELL]: (key: Key) =>
+      key.name === 'b' && key.ctrl === true,
+    [Command.TOGGLE_BACKGROUND_SHELL_LIST]: (key: Key) =>
+      key.name === 'o' && key.ctrl === true,
 
-  // Suggestion expansion
+    // Suggestion expansion
     [Command.EXPAND_SUGGESTION]: (key: Key) => key.name === 'right',
     [Command.COLLAPSE_SUGGESTION]: (key: Key) => key.name === 'left',
   };

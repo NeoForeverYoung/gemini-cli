@@ -779,7 +779,12 @@ Logging in with Google... Please restart Gemini CLI to continue.
       // If active shell is closed or none selected, select the first one (last added usually, or just first in iteration)
       setActiveBackgroundShellPid(backgroundShells.keys().next().value ?? null);
     }
-  }, [backgroundShells, activeBackgroundShellPid, backgroundShellCount]);
+  }, [
+    backgroundShells,
+    activeBackgroundShellPid,
+    backgroundShellCount,
+    isBackgroundShellListOpen,
+  ]);
 
   const visibleBackgroundShell =
     isBackgroundShellVisible &&
@@ -790,7 +795,11 @@ Logging in with Google... Please restart Gemini CLI to continue.
 
   useEffect(() => {
     if (embeddedShellFocused) {
-      if (!isBackgroundShellVisible || backgroundShells.size === 0) {
+      const hasActiveForegroundShell = !!activePtyId;
+      const hasVisibleBackgroundShell =
+        isBackgroundShellVisible && backgroundShells.size > 0;
+
+      if (!hasActiveForegroundShell && !hasVisibleBackgroundShell) {
         setEmbeddedShellFocused(false);
       }
     }
@@ -799,6 +808,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
     backgroundShells,
     embeddedShellFocused,
     backgroundShellCount,
+    activePtyId,
   ]);
 
   cancelHandlerRef.current = useCallback(
@@ -1286,10 +1296,9 @@ Logging in with Google... Please restart Gemini CLI to continue.
       isAlternateBuffer,
       backgroundCurrentShell,
       toggleBackgroundShell,
-      visibleBackgroundShell,
       backgroundShells,
       isBackgroundShellVisible,
-      isBackgroundShellListOpen,
+      visibleBackgroundShell,
       setIsBackgroundShellListOpen,
     ],
   );
@@ -1659,9 +1668,10 @@ Logging in with Google... Please restart Gemini CLI to continue.
       defaultBannerText,
       warningBannerText,
       bannerVisible,
-      visibleBackgroundShell,
       backgroundShellHeight,
       isBackgroundShellListOpen,
+      backgroundShells,
+      activeBackgroundShellPid,
     ],
   );
 

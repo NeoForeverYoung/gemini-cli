@@ -131,7 +131,11 @@ class Cell {
   }
 }
 
-export function serializeTerminalToObject(terminal: Terminal, defaultFg: string, defaultBg: string): AnsiOutput {
+export function serializeTerminalToObject(
+  terminal: Terminal,
+  defaultFg: string,
+  defaultBg: string,
+): AnsiOutput {
   const buffer = terminal.buffer.active;
   const cursorX = buffer.cursorX;
   const cursorY = buffer.cursorY;
@@ -163,8 +167,8 @@ export function serializeTerminalToObject(terminal: Terminal, defaultFg: string,
             dim: lastCell.isAttribute(Attribute.dim),
             inverse:
               lastCell.isAttribute(Attribute.inverse) || lastCell.isCursor(),
-        fg: convertColorToHex(lastCell.fg, lastCell.fgColorMode, defaultFg),
-        bg: convertColorToHex(lastCell.bg, lastCell.bgColorMode, defaultBg),
+            fg: convertColorToHex(lastCell.fg, lastCell.fgColorMode, defaultFg),
+            bg: convertColorToHex(lastCell.bg, lastCell.bgColorMode, defaultBg),
           };
           currentLine.push(token);
         }

@@ -104,6 +104,7 @@ describe('executeToolCall', () => {
         typeof toolResult.llmContent === 'string'
           ? toolResult.llmContent.length
           : undefined,
+      data: undefined,
       responseParts: [
         {
           functionResponse: {
@@ -307,6 +308,7 @@ describe('executeToolCall', () => {
       outputFile: undefined,
       resultDisplay: 'Image processed',
       contentLength: undefined,
+      data: undefined,
       responseParts: [
         {
           functionResponse: {

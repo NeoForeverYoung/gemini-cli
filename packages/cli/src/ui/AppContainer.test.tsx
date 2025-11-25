@@ -307,6 +307,16 @@ describe('AppContainer State Management', () => {
       pendingHistoryItems: [],
       thought: null,
       cancelOngoingRequest: vi.fn(),
+      handleApprovalModeChange: vi.fn(),
+      activePtyId: null,
+      loopDetectionConfirmationRequest: null,
+      backgroundShellCount: 0,
+      isBackgroundShellVisible: false,
+      toggleBackgroundShell: vi.fn(),
+      backgroundCurrentShell: vi.fn(),
+      backgroundShells: new Map(),
+      registerBackgroundShell: vi.fn(),
+      killBackgroundShell: vi.fn(),
     });
     mockedUseVim.mockReturnValue({ handleInput: vi.fn() });
     mockedUseFolderTrust.mockReturnValue({
@@ -992,6 +1002,16 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: { subject: thoughtSubject },
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        activePtyId: null,
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
       });
 
       // Act: Render the container
@@ -1033,6 +1053,16 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: null,
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        activePtyId: null,
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
       });
 
       // Act: Render the container
@@ -1075,6 +1105,16 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: { subject: thoughtSubject },
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        activePtyId: null,
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
       });
 
       // Act: Render the container
@@ -1117,6 +1157,16 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: { subject: shortTitle },
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        activePtyId: null,
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
       });
 
       // Act: Render the container
@@ -1163,6 +1213,16 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: { subject: title },
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        activePtyId: null,
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
       });
 
       // Act: Render the container
@@ -1206,6 +1266,16 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: null,
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        activePtyId: null,
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
       });
 
       // Act: Render the container
@@ -1312,6 +1382,15 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: null,
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
         activePtyId: 'some-id',
       });
 
@@ -1384,6 +1463,16 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: null,
         cancelOngoingRequest: mockCancelOngoingRequest,
+        handleApprovalModeChange: vi.fn(),
+        activePtyId: null,
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
       });
 
       // Default empty text buffer
@@ -1408,6 +1497,16 @@ describe('AppContainer State Management', () => {
           pendingHistoryItems: [],
           thought: null,
           cancelOngoingRequest: mockCancelOngoingRequest,
+          handleApprovalModeChange: vi.fn(),
+          activePtyId: null,
+          loopDetectionConfirmationRequest: null,
+          backgroundShellCount: 0,
+          isBackgroundShellVisible: false,
+          toggleBackgroundShell: vi.fn(),
+          backgroundCurrentShell: vi.fn(),
+          backgroundShells: new Map(),
+          registerBackgroundShell: vi.fn(),
+          killBackgroundShell: vi.fn(),
         });
         await setupKeypressTest();
 
@@ -1783,6 +1882,15 @@ describe('AppContainer State Management', () => {
         pendingHistoryItems: [],
         thought: null,
         cancelOngoingRequest: vi.fn(),
+        handleApprovalModeChange: vi.fn(),
+        loopDetectionConfirmationRequest: null,
+        backgroundShellCount: 0,
+        isBackgroundShellVisible: false,
+        toggleBackgroundShell: vi.fn(),
+        backgroundCurrentShell: vi.fn(),
+        backgroundShells: new Map(),
+        registerBackgroundShell: vi.fn(),
+        killBackgroundShell: vi.fn(),
         activePtyId: 'some-pty-id', // Make sure activePtyId is set
       });
 
