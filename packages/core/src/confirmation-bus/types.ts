@@ -33,9 +33,11 @@ export interface ToolConfirmationDisplayRequest {
   type: MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST;
   correlationId: string;
   tool: AnyDeclarativeTool;
+  toolCall: FunctionCall;
   invocation: AnyToolInvocation;
   toolArgs: Record<string, unknown>;
   confirmationDetails: ToolCallConfirmationDetails;
+  serverName?: string;
 }
 
 export interface ToolConfirmationResponse {

@@ -26,6 +26,7 @@ import {
   AdkToDeclarativeAdapter,
 } from '../tools/adapters.js';
 import { type Config } from '../config/config.js';
+import type { FunctionCall } from '@google/genai';
 
 interface ContextWithCorrelationId extends ToolContext {
   correlationId?: string;
@@ -94,13 +95,25 @@ export class MessageBusPlugin extends BasePlugin {
       // afterToolCallback and onToolErrorCallback.
       (toolContext as ContextWithCorrelationId).correlationId = correlationId;
 
+      const toolCall: FunctionCall = {
+        name: declarativeTool.name,
+        args: toolArgs,
+      };
+
+      let serverName: string | undefined;
+      if (confirmationDetails.type === 'mcp') {
+        serverName = confirmationDetails.serverName;
+      }
+
       this.messageBus.publish({
         type: MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST,
         correlationId,
         tool: declarativeTool,
+        toolCall,
         invocation,
         toolArgs,
         confirmationDetails,
+        serverName,
       });
     }
 

@@ -49,7 +49,10 @@ export class MessageBus extends EventEmitter {
         );
       }
 
-      if (message.type === MessageBusType.TOOL_CONFIRMATION_REQUEST) {
+      if (
+        message.type === MessageBusType.TOOL_CONFIRMATION_REQUEST ||
+        message.type === MessageBusType.TOOL_CONFIRMATION_DISPLAY_REQUEST
+      ) {
         const { decision } = await this.policyEngine.check(
           message.toolCall,
           message.serverName,
