@@ -594,6 +594,7 @@ export function loadSettings(
   let userSettings: Settings = {};
   let workspaceSettings: Settings = {};
   const settingsErrors: SettingsError[] = [];
+  const userSettingsPath = Storage.getGlobalSettingsPath();
   const systemSettingsPath = getSystemSettingsPath();
   const systemDefaultsPath = getSystemDefaultsPath();
   const migratedInMemoryScopes = new Set<SettingScope>();
@@ -679,8 +680,7 @@ export function loadSettings(
     systemDefaultsPath,
     SettingScope.SystemDefaults,
   );
-  const userResult = loadAndMigrate(USER_SETTINGS_PATH, SettingScope.User);
-
+  const userResult = loadAndMigrate(userSettingsPath, SettingScope.User);
   let workspaceResult: { settings: Settings; rawJson?: string } = {
     settings: {} as Settings,
     rawJson: undefined,
@@ -765,7 +765,7 @@ export function loadSettings(
       rawJson: systemDefaultsResult.rawJson,
     },
     {
-      path: USER_SETTINGS_PATH,
+      path: userSettingsPath,
       settings: userSettings,
       originalSettings: userOriginalSettings,
       rawJson: userResult.rawJson,
