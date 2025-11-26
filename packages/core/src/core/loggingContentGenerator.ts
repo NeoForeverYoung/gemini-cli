@@ -34,6 +34,29 @@ import { toContents } from '../code_assist/converter.js';
 import { isStructuredError } from '../utils/quotaErrorDetection.js';
 import { runInDevTraceSpan, type SpanMetadata } from '../telemetry/trace.js';
 
+import fs from 'node:fs';
+import path from 'node:path';
+let i = 0;
+const lgp = '/tmp/evals/log.json';
+const clearOnStart = false;
+export function log(...args: object[]): void {
+  if (i === 0 && clearOnStart) {
+    fs.rmSync(lgp, { recursive: true, force: true });
+    fs.mkdirSync(path.dirname(lgp), { recursive: true });
+  }
+  const text =
+    args
+      .map((arg) => {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch (_) {
+          return arg;
+        }
+      })
+      .join('\n') + '\n';
+  fs.appendFileSync(lgp, `T${i++}: ${text}`);
+}
+
 interface StructuredError {
   status: number;
 }
@@ -167,6 +190,10 @@ export class LoggingContentGenerator implements ContentGenerator {
     req: GenerateContentParameters,
     userPromptId: string,
   ): Promise<GenerateContentResponse> {
+    log({
+      name: 'generateContent',
+      req,
+    });
     return runInDevTraceSpan(
       {
         name: 'generateContent',
@@ -202,6 +229,10 @@ export class LoggingContentGenerator implements ContentGenerator {
           );
           return response;
         } catch (error) {
+          log({
+            name: 'inner',
+            error: JSON.stringify(error, null, 2),
+          });
           const durationMs = Date.now() - startTime;
           this._logApiError(
             durationMs,
@@ -222,6 +253,10 @@ export class LoggingContentGenerator implements ContentGenerator {
     req: GenerateContentParameters,
     userPromptId: string,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
+    log({
+      name: 'generateContentStream',
+      req,
+    });
     return runInDevTraceSpan(
       {
         name: 'generateContentStream',
@@ -240,6 +275,10 @@ export class LoggingContentGenerator implements ContentGenerator {
         try {
           stream = await this.wrapped.generateContentStream(req, userPromptId);
         } catch (error) {
+          log({
+            name: 'generateContentStream',
+            error: JSON.stringify(error, null, 2),
+          });
           const durationMs = Date.now() - startTime;
           this._logApiError(
             durationMs,
@@ -308,6 +347,10 @@ export class LoggingContentGenerator implements ContentGenerator {
         durationMs,
       };
     } catch (error) {
+      log({
+        name: 'inner',
+        error,
+      });
       spanMetadata.error = error;
       const durationMs = Date.now() - startTime;
       this._logApiError(
