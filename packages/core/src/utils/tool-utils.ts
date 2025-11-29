@@ -70,6 +70,15 @@ export function doesToolInvocationMatch(
     }
 
     if (toolNames.some((name) => SHELL_TOOL_NAMES.includes(name))) {
+      // DEBUG LOGGING START
+      if (command.includes('echo')) {
+        console.log('--- DEBUG: doesToolInvocationMatch ---');
+        console.log(`Checking match for command: "${command}"`);
+        console.log(`Against argPattern: "${argPattern}"`);
+        console.log(`Exact match: ${command === argPattern}`);
+        console.log(`Prefix match: ${command.startsWith(argPattern + ' ')}`);
+      }
+      // DEBUG LOGGING END
       if (command === argPattern || command.startsWith(argPattern + ' ')) {
         return true;
       }

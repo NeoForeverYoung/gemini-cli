@@ -837,6 +837,13 @@ export function isShellInvocationAllowlisted(
     .map((detail) => normalize(detail.text))
     .filter(Boolean);
 
+  // DEBUG LOGGING START
+  console.log('--- DEBUG: isShellInvocationAllowlisted ---');
+  console.log('Raw command:', command);
+  console.log('Parsed commandsToValidate:', commandsToValidate);
+  console.log('Allowed patterns:', allowedPatterns);
+  // DEBUG LOGGING END
+
   if (commandsToValidate.length === 0) {
     return false;
   }
