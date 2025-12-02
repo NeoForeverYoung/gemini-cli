@@ -16,14 +16,12 @@ import type {
   GenerateContentConfig,
   GenerateContentParameters,
 } from '@google/genai';
-import { ThinkingLevel } from '@google/genai';
 import { toParts } from '../code_assist/converter.js';
 import { createUserContent, FinishReason } from '@google/genai';
 import { retryWithBackoff, isRetryableError } from '../utils/retry.js';
 import type { Config } from '../config/config.js';
 import {
   DEFAULT_GEMINI_MODEL,
-  DEFAULT_THINKING_MODE,
   PREVIEW_GEMINI_MODEL,
   getEffectiveModel,
   isGemini2Model,
@@ -273,9 +271,8 @@ export class GeminiChat {
     this.sendPromise = streamDonePromise;
 
     const userContent = createUserContent(message);
-    const { model, generateContentConfig } =
+    const { model } =
       this.config.modelConfigService.getResolvedConfig(modelConfigKey);
-    generateContentConfig.abortSignal = signal;
 
     // Record user input - capture complete message with all parts (text, files, images, etc.)
     // but skip recording function responses (tool call results) as they should be stored in tool call records
@@ -316,17 +313,17 @@ export class GeminiChat {
               yield { type: StreamEventType.RETRY };
             }
 
-            // If this is a retry, set temperature to 1 to encourage different output.
-            if (attempt > 0) {
-              generateContentConfig.temperature = 1;
-            }
+            const currentConfigKey =
+              attempt > 0
+                ? { ...modelConfigKey, isRetry: true }
+                : modelConfigKey;
 
             isConnectionPhase = true;
             const stream = await this.makeApiCallAndProcessStream(
-              model,
-              generateContentConfig,
+              currentConfigKey,
               requestContents,
               prompt_id,
+              signal,
             );
             isConnectionPhase = false;
             for await (const chunk of stream) {
@@ -405,24 +402,32 @@ export class GeminiChat {
   }
 
   private async makeApiCallAndProcessStream(
-    model: string,
-    generateContentConfig: GenerateContentConfig,
+    modelConfigKey: ModelConfigKey,
     requestContents: Content[],
     prompt_id: string,
+    signal: AbortSignal,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
-    let effectiveModel = model;
+    // 1. Initial resolution to get the intended concrete model and its config.
+    const {
+      model: initialResolvedModel,
+      generateContentConfig: initialConfig,
+    } = this.config.modelConfigService.getResolvedConfig(modelConfigKey);
+
+    // Track state variables that might change during the setup phase
+    let effectiveModel = initialResolvedModel;
     const contentsForPreviewModel =
       this.ensureActiveLoopHasThoughtSignatures(requestContents);
 
     // Track final request parameters for AfterModel hooks
-    let lastModelToUse = model;
-    let lastConfig: GenerateContentConfig = generateContentConfig;
+    let lastModelToUse = initialResolvedModel;
+    let lastConfig: GenerateContentConfig = {};
     let lastContentsToUse: Content[] = requestContents;
 
     const apiCall = async () => {
+      // 2. Apply Fallback / Bypass Logic to determine the actual model to use.
       let modelToUse = getEffectiveModel(
         this.config.isInFallbackMode(),
-        model,
+        initialResolvedModel,
         this.config.getPreviewFeatures(),
       );
 
@@ -437,30 +442,33 @@ export class GeminiChat {
       }
 
       effectiveModel = modelToUse;
-      const config = {
-        ...generateContentConfig,
+
+      // 3. Determine the correct configuration for the model we are actually going to use.
+      let finalConfig: GenerateContentConfig;
+
+      if (modelToUse === initialResolvedModel) {
+        // No fallback happened, use the config we already resolved.
+        finalConfig = initialConfig;
+      } else {
+        // Fallback occurred! Re-resolve to get the specific config for the fallback model.
+        // This ensures we don't send incompatible settings (like thinkingLevel vs thinkingBudget).
+        const { generateContentConfig: fallbackConfig } =
+          this.config.modelConfigService.getResolvedConfig({
+            ...modelConfigKey,
+            model: modelToUse,
+          });
+        finalConfig = fallbackConfig;
+      }
+
+      const config: GenerateContentConfig = {
+        ...finalConfig,
         // TODO(12622): Ensure we don't overrwrite these when they are
         // passed via config.
         systemInstruction: this.systemInstruction,
         tools: this.tools,
+        abortSignal: signal,
       };
 
-      // TODO(joshualitt): Clean this up with model configs.
-      if (modelToUse.startsWith('gemini-3')) {
-        config.thinkingConfig = {
-          ...config.thinkingConfig,
-          thinkingLevel: ThinkingLevel.HIGH,
-        };
-        delete config.thinkingConfig?.thinkingBudget;
-      } else {
-        // The `gemini-3` configs use thinkingLevel, so we have to invert the
-        // change above.
-        config.thinkingConfig = {
-          ...config.thinkingConfig,
-          thinkingBudget: DEFAULT_THINKING_MODE,
-        };
-        delete config.thinkingConfig?.thinkingLevel;
-      }
       let contentsToUse =
         modelToUse === PREVIEW_GEMINI_MODEL
           ? contentsForPreviewModel
@@ -549,10 +557,10 @@ export class GeminiChat {
       onPersistent429: onPersistent429Callback,
       authType: this.config.getContentGeneratorConfig()?.authType,
       retryFetchErrors: this.config.getRetryFetchErrors(),
-      signal: generateContentConfig.abortSignal,
+      signal,
       maxAttempts:
         this.config.isPreviewModelFallbackMode() &&
-        model === PREVIEW_GEMINI_MODEL
+        lastModelToUse === PREVIEW_GEMINI_MODEL
           ? 1
           : undefined,
     });

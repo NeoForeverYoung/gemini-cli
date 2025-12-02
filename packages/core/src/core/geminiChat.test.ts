@@ -153,7 +153,7 @@ describe('GeminiChat', () => {
           return {
             model: modelConfigKey.model,
             generateContentConfig: {
-              temperature: 0,
+              temperature: modelConfigKey.isRetry ? 1 : 0,
               thinkingConfig,
             },
           };
@@ -2050,6 +2050,85 @@ describe('GeminiChat', () => {
           }),
         }),
         'prompt-id-fb3',
+      );
+    });
+
+    it('should preserve isRetry: true when re-resolving config during a fallback on a retry attempt', async () => {
+      // 1. Setup:
+      // - First attempt fails with InvalidStreamError (triggers outer loop retry)
+      // - Second attempt (Attempt 1) starts with 'gemini-2.0-flash' but falls back to 'flash-model'
+      // - We want to verify that the config for 'flash-model' includes isRetry: true
+
+      // Mock generateContentStream to:
+      // Call 1 (Attempt 0): Fail with empty response (InvalidStreamError)
+      // Call 2 (Attempt 1): Succeed, but simulate it happening on the Fallback model
+      vi.mocked(mockContentGenerator.generateContentStream)
+        .mockImplementationOnce(async () =>
+          (async function* () {
+            yield {
+              candidates: [{ content: { parts: [{ text: '' }] } }],
+            } as unknown as GenerateContentResponse;
+          })(),
+        )
+        .mockImplementationOnce(async () =>
+          (async function* () {
+            yield {
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: 'Success on retry with fallback' }],
+                  },
+                  finishReason: 'STOP',
+                },
+              ],
+            } as unknown as GenerateContentResponse;
+          })(),
+        );
+
+      // Force fallback logic to trigger on the second call
+      // We'll verify this by checking the model passed to generateContentStream
+      // NOTE: We need to use 'mockReturnValue' for the default (first call) and 'mockReturnValueOnce' for the second.
+      // However, since isInFallbackMode is called multiple times per attempt, this is brittle.
+      // Better approach: mock implementation based on the model being passed to getEffectiveModel?
+      // Or just simpler: The first attempt is 'gemini-2.0-flash' (default).
+      // The retry loop runs. On the second attempt, we want fallback to be true.
+      // Let's just mock it to return false then true.
+      const isInFallbackModeSpy = vi.spyOn(mockConfig, 'isInFallbackMode');
+      isInFallbackModeSpy
+        .mockReturnValueOnce(false) // Initial check
+        .mockReturnValueOnce(false) // Any subsequent checks in first attempt
+        .mockReturnValue(true); // All checks in second attempt (fallback active)
+
+      // 2. Action
+      // Use a real model name so isGemini2Model returns true, allowing retries
+      const stream = await chat.sendMessageStream(
+        { model: 'gemini-2.5-flash' },
+        'test retry fallback',
+        'prompt-id-retry-fallback',
+        new AbortController().signal,
+      );
+
+      for await (const _ of stream) {
+        // consume stream
+      }
+
+      // 3. Assertions
+      expect(mockContentGenerator.generateContentStream).toHaveBeenCalledTimes(
+        2,
+      );
+
+      // The second call should use the Fallback Model (FLASH) AND have temperature: 1 (from isRetry)
+      expect(
+        mockContentGenerator.generateContentStream,
+      ).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          model: DEFAULT_GEMINI_FLASH_MODEL, // Fallback happened
+          config: expect.objectContaining({
+            temperature: 1, // isRetry: true was preserved!
+          }),
+        }),
+        'prompt-id-retry-fallback',
       );
     });
 
