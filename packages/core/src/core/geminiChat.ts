@@ -16,9 +16,9 @@ import type {
   GenerateContentConfig,
   GenerateContentParameters,
 } from '@google/genai';
-import { ThinkingLevel } from '@google/genai';
+import { FinishReason, ThinkingLevel } from '@google/genai';
 import { toParts } from '../code_assist/converter.js';
-import { createUserContent, FinishReason } from '@google/genai';
+import { createUserContent } from '@google/genai';
 import { retryWithBackoff } from '../utils/retry.js';
 import type { Config } from '../config/config.js';
 import {
@@ -53,6 +53,8 @@ import {
   fireBeforeModelHook,
   fireBeforeToolSelectionHook,
 } from './geminiChatHookTriggers.js';
+
+let debugTestRetryCount = 0;
 
 export enum StreamEventType {
   /** A regular content chunk from the API. */
@@ -711,11 +713,24 @@ export class GeminiChat {
     }
   }
 
+  i = 0;
+
   private async *processStreamResponse(
     model: string,
     streamResponse: AsyncGenerator<GenerateContentResponse>,
     originalRequest: GenerateContentParameters,
   ): AsyncGenerator<GenerateContentResponse> {
+    debugTestRetryCount++;
+    this.i++;
+    if (this.i > 3) {
+      process.stdout.write(
+        `[TEST] Injecting InvalidStreamError. Model: ${model}, Count: ${debugTestRetryCount}\n`,
+      );
+      throw new InvalidStreamError(
+        'Simulated error for testing retries',
+        'NO_FINISH_REASON',
+      );
+    }
     const modelResponseParts: Part[] = [];
 
     let hasToolCall = false;

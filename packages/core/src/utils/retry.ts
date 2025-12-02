@@ -83,6 +83,8 @@ function defaultShouldRetry(
  * @returns A promise that resolves with the result of the function if successful.
  * @throws The last error encountered if all attempts fail.
  */
+
+// let i = 0;
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   options?: Partial<RetryOptions>,
@@ -90,6 +92,11 @@ export async function retryWithBackoff<T>(
   if (options?.signal?.aborted) {
     throw createAbortError();
   }
+
+  // if (i > 3) {
+  //   throw new Error('Retry attempts exhausted');
+  // }
+  // i++;
 
   if (options?.maxAttempts !== undefined && options.maxAttempts <= 0) {
     throw new Error('maxAttempts must be a positive number.');
