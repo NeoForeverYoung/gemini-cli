@@ -1184,6 +1184,13 @@ Logging in with Google... Restarting Gemini CLI to continue.
       ) {
         setConstrainHeight(false);
       } else if (keyMatchers[Command.TOGGLE_SHELL_INPUT_FOCUS](key)) {
+        // Special handling for Tab collision with Autocomplete
+        // If Tab is pressed and shell is NOT focused, we ignore it here so InputPrompt
+        // can handle it (prioritizing Autocomplete).
+        if (key.name === 'tab' && !embeddedShellFocused && isInputActive) {
+          return;
+        }
+
         if (activePtyId || embeddedShellFocused) {
           setEmbeddedShellFocused((prev) => !prev);
         }
@@ -1207,6 +1214,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       setCopyModeEnabled,
       copyModeEnabled,
       isAlternateBuffer,
+      isInputActive,
     ],
   );
 
