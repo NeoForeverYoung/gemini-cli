@@ -106,8 +106,6 @@ export function handleError(
     runSyncCleanup();
     process.exit(getNumericExitCode(errorCode));
   } else {
-    const errorCode = customErrorCode ?? extractErrorCode(error);
-    process.exit(getNumericExitCode(errorCode));
     console.error(errorMessage);
     throw error;
   }
