@@ -58,12 +58,12 @@ jobs:
             const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open created:<${threeMonthsAgo.toISOString()}`;
             core.info(`Searching with query: ${query}`);
 
-            const itemsToCheck = await github.paginate(github.rest.search.issuesAndPullRequests, {
+            const itemsToCheck = (await github.paginate(github.rest.search.issuesAndPullRequests, {
               q: query,
               sort: 'created',
               order: 'asc',
               per_page: 100
-            });
+            })).slice(0, 10);
 
             core.info(`Found ${itemsToCheck.length} open issues to check.`);
 
