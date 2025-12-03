@@ -58,18 +58,24 @@ jobs:
             const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open created:<${threeMonthsAgo.toISOString()}`;
             core.info(`Searching with query: ${query}`);
 
-            const itemsToCheck = (await github.paginate(github.rest.search.issuesAndPullRequests, {
+            // Fetch only the top 10 issues directly to avoid pagination overhead and rate limits
+            const { data: { items: itemsToCheck } } = await github.rest.search.issuesAndPullRequests({
               q: query,
               sort: 'created',
               order: 'asc',
               per_page: 100
-            })).slice(0, 10);
+            });
 
             core.info(`Found ${itemsToCheck.length} open issues to check.`);
+
+            // Helper to prevent hitting secondary rate limits
+            const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
             let processedCount = 0;
 
             for (const issue of itemsToCheck) {
+              await wait(2000); // Process serially with a delay (queue-like behavior)
+
               const createdAt = new Date(issue.created_at);
               const updatedAt = new Date(issue.updated_at);
               const reactionCount = issue.reactions.total_count;
