@@ -111,6 +111,7 @@ describe('EditTool', () => {
       setGeminiMdFileCount: vi.fn(),
       getToolRegistry: () => ({}) as any, // Minimal mock for ToolRegistry
       isInteractive: () => false,
+      getDisableLLMCorrection: vi.fn(() => false),
     } as unknown as Config;
 
     // Reset mocks before each test
