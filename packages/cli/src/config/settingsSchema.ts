@@ -1062,6 +1062,18 @@ const SETTINGS_SCHEMA = {
         `,
         showInDialog: true,
       },
+      disableLLMCorrection: {
+        type: 'boolean',
+        label: 'Disable LLM Correction',
+        category: 'Tools',
+        requiresRestart: false,
+        default: false,
+        description: oneLine`
+          Disable LLM-based error correction for edit tools.
+          When enabled, tools will fail immediately if exact string matches are not found, instead of attempting to self-correct.
+        `,
+        showInDialog: true,
+      },
       enableHooks: {
         type: 'boolean',
         label: 'Enable Hooks System',

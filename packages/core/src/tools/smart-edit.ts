@@ -404,6 +404,17 @@ class EditToolInvocation
     abortSignal: AbortSignal,
     originalLineEnding: '\r\n' | '\n',
   ): Promise<CalculatedEdit> {
+    if (this.config.getDisableLLMCorrection()) {
+      return {
+        currentContent,
+        newContent: currentContent,
+        occurrences: 0,
+        isNewFile: false,
+        error: initialError,
+        originalLineEnding,
+      };
+    }
+
     // In order to keep from clobbering edits made outside our system,
     // check if the file has been modified since we first read it.
     let errorForLlmEditFixer = initialError.raw;

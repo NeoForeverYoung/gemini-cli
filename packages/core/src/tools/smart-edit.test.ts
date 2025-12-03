@@ -117,6 +117,7 @@ describe('SmartEditTool', () => {
       getToolRegistry: () => ({}) as any,
       isInteractive: () => false,
       getExperiments: () => {},
+      getDisableLLMCorrection: vi.fn(() => false),
     } as unknown as Config;
 
     (mockConfig.getApprovalMode as Mock).mockClear();
@@ -751,6 +752,29 @@ describe('SmartEditTool', () => {
         0,
       );
       expect(totalActualRemoved).toBe(totalExpectedRemoved);
+    });
+  });
+
+  describe('disableLLMCorrection', () => {
+    it('should skip LLM correction and fail immediately if setting is enabled', async () => {
+      const testFile = 'no_correction.txt';
+      const filePath = path.join(rootDir, testFile);
+      fs.writeFileSync(filePath, 'some content', 'utf8');
+
+      (mockConfig.getDisableLLMCorrection as Mock).mockReturnValue(true);
+
+      const params: EditToolParams = {
+        file_path: filePath,
+        instruction: 'Replace something not there',
+        old_string: 'not found',
+        new_string: 'new',
+      };
+
+      const invocation = tool.build(params);
+      const result = await invocation.execute(new AbortController().signal);
+
+      expect(mockFixLLMEditWithInstruction).not.toHaveBeenCalled();
+      expect(result.error?.type).toBe(ToolErrorType.EDIT_NO_OCCURRENCE_FOUND);
     });
   });
 });

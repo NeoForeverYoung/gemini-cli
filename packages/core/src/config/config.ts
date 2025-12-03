@@ -311,6 +311,7 @@ export interface ConfigParameters {
   previewFeatures?: boolean;
   enableModelAvailabilityService?: boolean;
   experimentalJitContext?: boolean;
+  disableLLMCorrection?: boolean;
 }
 
 export class Config {
@@ -431,6 +432,7 @@ export class Config {
   private readonly enableModelAvailabilityService: boolean;
 
   private readonly experimentalJitContext: boolean;
+  private readonly disableLLMCorrection: boolean;
   private contextManager?: ContextManager;
 
   constructor(params: ConfigParameters) {
@@ -492,6 +494,7 @@ export class Config {
     this.enableModelAvailabilityService =
       params.enableModelAvailabilityService ?? false;
     this.experimentalJitContext = params.experimentalJitContext ?? false;
+    this.disableLLMCorrection = params.disableLLMCorrection ?? false;
     this.modelAvailabilityService = new ModelAvailabilityService();
     this.previewFeatures = params.previewFeatures ?? undefined;
     this.maxSessionTurns = params.maxSessionTurns ?? -1;
@@ -1184,6 +1187,10 @@ export class Config {
 
   getEnableExtensionReloading(): boolean {
     return this.enableExtensionReloading;
+  }
+
+  getDisableLLMCorrection(): boolean {
+    return this.disableLLMCorrection;
   }
 
   isModelAvailabilityServiceEnabled(): boolean {

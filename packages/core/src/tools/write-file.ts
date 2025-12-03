@@ -113,6 +113,10 @@ export async function getCorrectedFileContent(
   // So, file was either read successfully (fileExists=true, originalContent set)
   // or it was ENOENT (fileExists=false, originalContent='').
 
+  if (config.getDisableLLMCorrection()) {
+    return { originalContent, correctedContent, fileExists };
+  }
+
   if (fileExists) {
     // This implies originalContent is available
     const { params: correctedParams } = await ensureCorrectEdit(
