@@ -40,7 +40,12 @@ export const Footer: React.FC = () => {
     isTrustedFolder,
     mainAreaWidth,
   } = {
-    model: uiState.currentModel,
+    model:
+      uiState.preferredModel === 'auto'
+        ? 'auto'
+        : (uiState.lastUsedModel ??
+          uiState.preferredModel ??
+          uiState.currentModel),
     targetDir: config.getTargetDir(),
     debugMode: config.getDebugMode(),
     branchName: uiState.branchName,

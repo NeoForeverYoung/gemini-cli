@@ -41,16 +41,30 @@ describe('policyHelpers', () => {
       expect(chain[0]?.model).toBe('gemini-2.5-pro');
     });
 
-    it('returns the default chain when active model is "auto"', () => {
+    it('keeps "auto" first when active model is "auto"', () => {
       const config = createMockConfig({
         getModel: () => 'auto',
       });
       const chain = resolvePolicyChain(config);
 
-      // Expect default chain [Pro, Flash]
-      expect(chain).toHaveLength(2);
-      expect(chain[0]?.model).toBe('gemini-2.5-pro');
-      expect(chain[1]?.model).toBe('gemini-2.5-flash');
+      expect(chain[0]?.model).toBe('auto');
+      expect(chain.slice(1).map((p) => p.model)).toEqual([
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+      ]);
+    });
+
+    it('rotates the chain to prioritize the requested model when present', () => {
+      const config = createMockConfig({
+        getModel: () => 'gemini-2.5-flash',
+      });
+      const chain = resolvePolicyChain(config);
+
+      expect(chain.map((p) => p.model)).toEqual([
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+      ]);
+      expect(chain[0]?.isLastResort).toBe(true);
     });
   });
 

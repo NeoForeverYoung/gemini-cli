@@ -16,6 +16,7 @@ import type {
 import { createDefaultPolicy, getModelPolicyChain } from './policyCatalog.js';
 import { DEFAULT_GEMINI_MODEL, getEffectiveModel } from '../config/models.js';
 import type { ModelSelectionResult } from './modelAvailabilityService.js';
+import { debugLogger } from '../utils/debugLogger.js';
 
 /**
  * Resolves the active policy chain for the given config, ensuring the
@@ -40,11 +41,14 @@ export function resolvePolicyChain(
     );
 
   if (activeModel === 'auto') {
-    return [...chain];
+    // Preserve user intent: keep "auto" as the first choice and fall back to
+    // the catalog order if the service moves away from it.
+    return [createDefaultPolicy('auto'), ...chain];
   }
 
-  if (chain.some((policy) => policy.model === activeModel)) {
-    return [...chain];
+  const activeIndex = chain.findIndex((policy) => policy.model === activeModel);
+  if (activeIndex !== -1) {
+    return [...chain.slice(activeIndex), ...chain.slice(0, activeIndex)];
   }
 
   // If the user specified a model not in the default chain, we assume they want
@@ -121,15 +125,28 @@ export function selectModelForAvailability(
   }
 
   const chain = resolvePolicyChain(config, requestedModel);
+  debugLogger.log(
+    `[availability] selectModelForAvailability requested=${requestedModel} chain=${chain
+      .map((p) => p.model)
+      .join(' > ')}`,
+  );
   const selection = config
     .getModelAvailabilityService()
     .selectFirstAvailable(chain.map((p) => p.model));
 
-  if (selection.selectedModel) return selection;
+  if (selection.selectedModel) {
+    debugLogger.log(
+      `[availability] selection selected=${selection.selectedModel ?? 'null'} skipped=${selection.skipped?.join(',') ?? ''}`,
+    );
+    return selection;
+  }
 
   const backupModel =
     chain.find((p) => p.isLastResort)?.model ?? DEFAULT_GEMINI_MODEL;
 
+  debugLogger.log(
+    `[availability] selection selected=${backupModel ?? 'null'} skipped=${selection.skipped?.join(',') ?? ''}`,
+  );
   return { selectedModel: backupModel, skipped: [] };
 }
 

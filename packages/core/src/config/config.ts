@@ -717,6 +717,10 @@ export class Config {
     // Initialize BaseLlmClient now that the ContentGenerator is available
     this.baseLlmClient = new BaseLlmClient(this.contentGenerator, this);
 
+    if (this.isModelAvailabilityServiceEnabled()) {
+      this.getModelAvailabilityService().resetAll();
+    }
+
     const previewFeatures = this.getPreviewFeatures();
 
     const codeAssistServer = getCodeAssistServer(this);
@@ -814,6 +818,11 @@ export class Config {
       this.model = newModel;
       // When the user explicitly sets a model, that becomes the active model.
       this._activeModel = newModel;
+      if (this.isModelAvailabilityServiceEnabled()) {
+        const service = this.getModelAvailabilityService();
+        service.markHealthy(newModel);
+        service.resetTurn();
+      }
       coreEvents.emitModelChanged(newModel);
     }
     this.setFallbackMode(false);

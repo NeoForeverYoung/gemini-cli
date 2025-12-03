@@ -125,7 +125,7 @@ describe('handleFallback', () => {
   });
 
   it('should still consult the handler if the failed model is the fallback model', async () => {
-    mockHandler.mockResolvedValue('stop');
+    mockHandler.mockResolvedValue('retry_later');
     const result = await handleFallback(
       mockConfig,
       FALLBACK_MODEL, // Failed model is Flash
@@ -158,22 +158,6 @@ describe('handleFallback', () => {
       );
 
       expect(result).toBe(true);
-      expect(mockConfig.setFallbackMode).toHaveBeenCalledWith(true);
-      expect(logFlashFallback).toHaveBeenCalled();
-    });
-  });
-
-  describe('when handler returns "stop"', () => {
-    it('should activate fallback mode, log telemetry, and return false', async () => {
-      mockHandler.mockResolvedValue('stop');
-
-      const result = await handleFallback(
-        mockConfig,
-        MOCK_PRO_MODEL,
-        AUTH_OAUTH,
-      );
-
-      expect(result).toBe(false);
       expect(mockConfig.setFallbackMode).toHaveBeenCalledWith(true);
       expect(logFlashFallback).toHaveBeenCalled();
     });
@@ -736,20 +720,6 @@ describe('handleFallback', () => {
       expect(result).toBe(true);
       expect(policyConfig.setActiveModel).toHaveBeenCalledWith(FALLBACK_MODEL);
       expect(policyConfig.setFallbackMode).not.toHaveBeenCalled();
-      // TODO: add logging expect statement
-    });
-
-    it('calls setActiveModel when handler returns "stop"', async () => {
-      policyHandler.mockResolvedValue('stop');
-
-      const result = await handleFallback(
-        policyConfig,
-        MOCK_PRO_MODEL,
-        AUTH_OAUTH,
-      );
-
-      expect(result).toBe(false);
-      expect(policyConfig.setActiveModel).toHaveBeenCalledWith(FALLBACK_MODEL);
       // TODO: add logging expect statement
     });
   });

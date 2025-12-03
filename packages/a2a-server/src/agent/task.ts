@@ -97,7 +97,7 @@ export class Task {
       // For a2a-server, we want to automatically switch to the fallback model
       // for future requests without retrying the current one. The 'stop'
       // intent achieves this.
-      async () => 'stop',
+      async () => 'retry_later',
     );
   }
 

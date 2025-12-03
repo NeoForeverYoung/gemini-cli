@@ -87,7 +87,7 @@ export function useQuotaAndFallback({
       config.setQuotaErrorOccurred(true);
 
       if (isDialogPending.current) {
-        return 'stop'; // A dialog is already active, so just stop this request.
+        return 'retry_later'; // A dialog is already active, so just stop this request.
       }
       isDialogPending.current = true;
 

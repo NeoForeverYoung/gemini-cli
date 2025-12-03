@@ -324,13 +324,13 @@ describe('fallback mode display', () => {
       width: 120,
       uiState: {
         sessionStats: mockSessionStats,
-        currentModel: 'gemini-2.5-flash', // Fallback active, showing Flash
+        currentModel: 'gemini-2.5-flash', // active fallback
+        preferredModel: 'gemini-2.5-pro',
       },
     });
 
-    // Footer should show the effective model (Flash), not the config model (Pro)
-    expect(lastFrame()).toContain('gemini-2.5-flash');
-    expect(lastFrame()).not.toContain('gemini-2.5-pro');
+    // Footer shows the user-selected model (preferred), not the active fallback.
+    expect(lastFrame()).toContain('gemini-2.5-pro');
   });
 
   it('should display Pro model when NOT in fallback mode', () => {
@@ -339,6 +339,7 @@ describe('fallback mode display', () => {
       uiState: {
         sessionStats: mockSessionStats,
         currentModel: 'gemini-2.5-pro', // Normal mode, showing Pro
+        preferredModel: 'gemini-2.5-pro',
       },
     });
 

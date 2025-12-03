@@ -102,6 +102,10 @@ export interface UIState {
   userTier: UserTierId | undefined;
   proQuotaRequest: ProQuotaDialogRequest | null;
   currentModel: string;
+  preferredModel: string;
+  lastUsedModel: string;
+  availabilityEnabled: boolean;
+  isAvailabilityFallback: boolean;
   contextFileNames: string[];
   errorCount: number;
   availableTerminalHeight: number | undefined;

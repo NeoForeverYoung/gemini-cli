@@ -263,7 +263,21 @@ export const AppContainer = (props: AppContainerProps) => {
     return config.getModel();
   }, [config]);
 
-  const [currentModel, setCurrentModel] = useState(getEffectiveModel());
+  const [currentModel, setCurrentModel] = useState(
+    config.getModel() || getEffectiveModel(),
+  );
+  const currentModelRef = useRef(currentModel);
+  const [lastUsedModel, setLastUsedModel] = useState(
+    config.getModel() || getEffectiveModel(),
+  );
+  const [preferredModel, setPreferredModel] = useState(config.getModel());
+  const availabilityEnabled = useMemo(
+    () => config.isModelAvailabilityServiceEnabled(),
+    [config],
+  );
+  const isAutoSelection = preferredModel === 'auto';
+  const isAvailabilityFallback =
+    availabilityEnabled && !isAutoSelection && lastUsedModel !== preferredModel;
 
   const [userTier, setUserTier] = useState<UserTierId | undefined>(undefined);
 
@@ -336,13 +350,41 @@ export const AppContainer = (props: AppContainerProps) => {
 
   // Subscribe to fallback mode and model changes from core
   useEffect(() => {
+    currentModelRef.current = currentModel;
+  }, [currentModel]);
+
+  useEffect(() => {
     const handleFallbackModeChanged = () => {
+      if (availabilityEnabled) return;
       const effectiveModel = getEffectiveModel();
       setCurrentModel(effectiveModel);
+      setLastUsedModel(effectiveModel);
+      debugLogger.log(
+        `[ui] fallback mode changed, effective model set to ${effectiveModel}`,
+      );
     };
 
     const handleModelChanged = (payload: ModelChangedPayload) => {
+      const preferred = config.getModel();
+      setPreferredModel(preferred);
+
+      if (!availabilityEnabled) {
+        setCurrentModel(payload.model);
+        setLastUsedModel(payload.model);
+        debugLogger.log(
+          `[ui] model changed (availability disabled) -> ${payload.model}`,
+        );
+        return;
+      }
+
       setCurrentModel(payload.model);
+      if (preferred !== 'auto') {
+        setLastUsedModel(payload.model);
+      }
+
+      debugLogger.log(
+        `[ui] model changed (availability enabled) -> ${payload.model} preferred=${preferred}`,
+      );
     };
 
     coreEvents.on(CoreEvent.FallbackModeChanged, handleFallbackModeChanged);
@@ -351,7 +393,7 @@ export const AppContainer = (props: AppContainerProps) => {
       coreEvents.off(CoreEvent.FallbackModeChanged, handleFallbackModeChanged);
       coreEvents.off(CoreEvent.ModelChanged, handleModelChanged);
     };
-  }, [getEffectiveModel]);
+  }, [getEffectiveModel, availabilityEnabled, config]);
 
   const { consoleMessages, clearConsoleMessages: clearConsoleMessagesState } =
     useConsoleMessages();
@@ -752,6 +794,37 @@ Logging in with Google... Restarting Gemini CLI to continue.
     }
   }, [pendingRestorePrompt, inputHistory, historyManager.history]);
 
+  const handleTurnModelResolved = useCallback(
+    (model: string) => {
+      if (!model) return;
+      if (!availabilityEnabled) {
+        debugLogger.log(
+          '[ui] turn model resolved but availability disabled; ignoring callback',
+        );
+        return;
+      }
+      const current = currentModelRef.current;
+      if (preferredModel === 'auto') {
+        debugLogger.log(
+          '[ui] turn resolved while preferred model is auto; keeping display as auto',
+        );
+        return;
+      }
+      if (current && model !== current && model !== preferredModel) {
+        debugLogger.log(
+          `[ui] turn resolved with unexpected model=${model}; current=${current} preferred=${preferredModel}, ignoring update`,
+        );
+        return;
+      }
+      debugLogger.log(
+        `[ui] turn resolved with model=${model} availabilityEnabled=${availabilityEnabled}`,
+      );
+      setCurrentModel((prev) => (prev === model ? prev : model));
+      setLastUsedModel((prev) => (prev === model ? prev : model));
+    },
+    [availabilityEnabled, preferredModel],
+  );
+
   const {
     streamingState,
     submitQuery,
@@ -782,6 +855,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
     terminalWidth,
     terminalHeight,
     embeddedShellFocused,
+    handleTurnModelResolved,
   );
 
   // Auto-accept indicator
@@ -1501,6 +1575,10 @@ Logging in with Google... Restarting Gemini CLI to continue.
       queueErrorMessage,
       showAutoAcceptIndicator,
       currentModel,
+      preferredModel,
+      lastUsedModel,
+      availabilityEnabled,
+      isAvailabilityFallback,
       userTier,
       proQuotaRequest,
       contextFileNames,
@@ -1588,6 +1666,11 @@ Logging in with Google... Restarting Gemini CLI to continue.
       messageQueue,
       queueErrorMessage,
       showAutoAcceptIndicator,
+      currentModel,
+      preferredModel,
+      lastUsedModel,
+      availabilityEnabled,
+      isAvailabilityFallback,
       userTier,
       proQuotaRequest,
       contextFileNames,
@@ -1610,7 +1693,6 @@ Logging in with Google... Restarting Gemini CLI to continue.
       showIdeRestartPrompt,
       ideTrustRestartReason,
       isRestarting,
-      currentModel,
       extensionsUpdateState,
       activePtyId,
       historyManager,

@@ -238,17 +238,14 @@ async function processIntent(
       }
       return true;
 
-    case 'stop':
-      if (isAvailabilityEnabled) {
+    case 'retry_later':
+       if (isAvailabilityEnabled) {
         // TODO(telemetry): Implement generic fallback event logging. Existing
         // logFlashFallback is specific to a single Model.
         config.setActiveModel(fallbackModel);
       } else {
         activateFallbackMode(config, authType);
       }
-      return false;
-
-    case 'retry_later':
       return false;
 
     case 'upgrade':

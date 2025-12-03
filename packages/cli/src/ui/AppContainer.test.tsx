@@ -1778,6 +1778,33 @@ describe('AppContainer State Management', () => {
       expect(capturedUIState.currentModel).toBe('new-model');
       unmount();
     });
+
+    it('updates lastUsedModel at end of turn when availability is enabled', async () => {
+      vi.spyOn(mockConfig, 'getModel').mockReturnValue('initial-model');
+      vi.spyOn(mockConfig, 'isModelAvailabilityServiceEnabled').mockReturnValue(
+        true,
+      );
+
+      const { unmount } = renderAppContainer();
+      await waitFor(() => expect(capturedUIState).toBeTruthy());
+
+      const useGeminiArgs = mockedUseGeminiStream.mock.lastCall!;
+      const onTurnModelResolved = useGeminiArgs.at(-1) as
+        | ((model: string) => void)
+        | undefined;
+      expect(onTurnModelResolved).toBeTypeOf('function');
+
+      act(() => {
+        onTurnModelResolved?.('resolved-model');
+      });
+
+      await waitFor(() => {
+        expect(capturedUIState.lastUsedModel).toBe('resolved-model');
+        expect(capturedUIState.currentModel).toBe('resolved-model');
+      });
+
+      unmount();
+    });
   });
 
   describe('Shell Interaction', () => {

@@ -133,6 +133,10 @@ const baseMockUiState = {
   mainAreaWidth: 100,
   terminalWidth: 120,
   currentModel: 'gemini-pro',
+  preferredModel: 'gemini-pro',
+  lastUsedModel: 'gemini-pro',
+  availabilityEnabled: false,
+  isAvailabilityFallback: false,
 };
 
 const mockUIActions: UIActions = {

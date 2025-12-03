@@ -111,6 +111,7 @@ export const useGeminiStream = (
   terminalWidth: number,
   terminalHeight: number,
   isShellFocused?: boolean,
+  onTurnModelResolved?: (model: string) => void,
 ) => {
   const [initError, setInitError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -796,6 +797,8 @@ export const useGeminiStream = (
     ): Promise<StreamProcessingStatus> => {
       let geminiMessageBuffer = '';
       const toolCallRequests: ToolCallRequestInfo[] = [];
+      let lastModelInfo: string | null = null;
+      let processingStatus = StreamProcessingStatus.Completed;
       for await (const event of stream) {
         switch (event.type) {
           case ServerGeminiEventType.Thought:
@@ -812,9 +815,11 @@ export const useGeminiStream = (
             toolCallRequests.push(event.value);
             break;
           case ServerGeminiEventType.UserCancelled:
+            processingStatus = StreamProcessingStatus.UserCancelled;
             handleUserCancelledEvent(userMessageTimestamp);
             break;
           case ServerGeminiEventType.Error:
+            processingStatus = StreamProcessingStatus.Error;
             handleErrorEvent(event.value, userMessageTimestamp);
             break;
           case ServerGeminiEventType.ChatCompressed:
@@ -843,6 +848,7 @@ export const useGeminiStream = (
             handleCitationEvent(event.value, userMessageTimestamp);
             break;
           case ServerGeminiEventType.ModelInfo:
+            lastModelInfo = event.value;
             handleChatModelEvent(event.value, userMessageTimestamp);
             break;
           case ServerGeminiEventType.LoopDetected:
@@ -861,10 +867,20 @@ export const useGeminiStream = (
           }
         }
       }
+      const statusLabel = StreamProcessingStatus[processingStatus];
+      debugLogger.log(
+        `[ui] stream ended status=${statusLabel} lastModel=${lastModelInfo ?? 'n/a'}`,
+      );
+      if (
+        processingStatus === StreamProcessingStatus.Completed &&
+        lastModelInfo
+      ) {
+        onTurnModelResolved?.(lastModelInfo);
+      }
       if (toolCallRequests.length > 0) {
         scheduleToolCalls(toolCallRequests, signal);
       }
-      return StreamProcessingStatus.Completed;
+      return processingStatus;
     },
     [
       handleContentEvent,
@@ -877,6 +893,7 @@ export const useGeminiStream = (
       handleContextWindowWillOverflowEvent,
       handleCitationEvent,
       handleChatModelEvent,
+      onTurnModelResolved,
     ],
   );
   const submitQuery = useCallback(
