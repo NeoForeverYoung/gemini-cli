@@ -27,11 +27,7 @@ import { isNodeError } from '../utils/errors.js';
 import type { Config } from '../config/config.js';
 import { ApprovalMode } from '../policy/types.js';
 
-import {
-  ensureCorrectEdit,
-  countOccurrences,
-  type CorrectedEditResult,
-} from '../utils/editCorrector.js';
+import { ensureCorrectEdit } from '../utils/editCorrector.js';
 import { DEFAULT_DIFF_OPTIONS, getDiffStat } from './diffOptions.js';
 import { logFileOperation } from '../telemetry/loggers.js';
 import { FileOperationEvent } from '../telemetry/types.js';
@@ -185,26 +181,15 @@ class EditToolInvocation
       };
     } else if (currentContent !== null) {
       // Editing an existing file
-      let correctedEdit: CorrectedEditResult;
-      if (this.config.getDisableLLMCorrection()) {
-        correctedEdit = {
-          params: {
-            file_path: params.file_path,
-            old_string: params.old_string,
-            new_string: params.new_string,
-          },
-          occurrences: countOccurrences(currentContent, params.old_string),
-        };
-      } else {
-        correctedEdit = await ensureCorrectEdit(
-          this.resolvedPath,
-          currentContent,
-          params,
-          this.config.getGeminiClient(),
-          this.config.getBaseLlmClient(),
-          abortSignal,
-        );
-      }
+      const correctedEdit = await ensureCorrectEdit(
+        this.resolvedPath,
+        currentContent,
+        params,
+        this.config.getGeminiClient(),
+        this.config.getBaseLlmClient(),
+        abortSignal,
+        this.config.getDisableLLMCorrection(),
+      );
 
       finalOldString = correctedEdit.params.old_string;
       finalNewString = correctedEdit.params.new_string;

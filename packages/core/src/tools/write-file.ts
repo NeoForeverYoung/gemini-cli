@@ -113,10 +113,6 @@ export async function getCorrectedFileContent(
   // So, file was either read successfully (fileExists=true, originalContent set)
   // or it was ENOENT (fileExists=false, originalContent='').
 
-  if (config.getDisableLLMCorrection()) {
-    return { originalContent, correctedContent, fileExists };
-  }
-
   if (fileExists) {
     // This implies originalContent is available
     const { params: correctedParams } = await ensureCorrectEdit(
@@ -130,6 +126,7 @@ export async function getCorrectedFileContent(
       config.getGeminiClient(),
       config.getBaseLlmClient(),
       abortSignal,
+      config.getDisableLLMCorrection(),
     );
     correctedContent = correctedParams.new_string;
   } else {
@@ -138,6 +135,7 @@ export async function getCorrectedFileContent(
       proposedContent,
       config.getBaseLlmClient(),
       abortSignal,
+      config.getDisableLLMCorrection(),
     );
   }
   return { originalContent, correctedContent, fileExists };

@@ -170,6 +170,7 @@ export async function ensureCorrectEdit(
   geminiClient: GeminiClient,
   baseLlmClient: BaseLlmClient,
   abortSignal: AbortSignal,
+  disableLLMCorrection: boolean = false,
 ): Promise<CorrectedEditResult> {
   const cacheKey = `${currentContent}---${originalParams.old_string}---${originalParams.new_string}`;
   const cachedResult = editCorrectionCache.get(cacheKey);
@@ -188,7 +189,7 @@ export async function ensureCorrectEdit(
   let occurrences = countOccurrences(currentContent, finalOldString);
 
   if (occurrences === expectedReplacements) {
-    if (newStringPotentiallyEscaped) {
+    if (newStringPotentiallyEscaped && !disableLLMCorrection) {
       finalNewString = await correctNewStringEscaping(
         baseLlmClient,
         finalOldString,
@@ -235,7 +236,7 @@ export async function ensureCorrectEdit(
 
     if (occurrences === expectedReplacements) {
       finalOldString = unescapedOldStringAttempt;
-      if (newStringPotentiallyEscaped) {
+      if (newStringPotentiallyEscaped && !disableLLMCorrection) {
         finalNewString = await correctNewString(
           baseLlmClient,
           originalParams.old_string, // original old
@@ -271,6 +272,15 @@ export async function ensureCorrectEdit(
             return result;
           }
         }
+      }
+
+      if (disableLLMCorrection) {
+        const result: CorrectedEditResult = {
+          params: { ...originalParams },
+          occurrences: 0,
+        };
+        editCorrectionCache.set(cacheKey, result);
+        return result;
       }
 
       const llmCorrectedOldString = await correctOldStringMismatch(
@@ -346,6 +356,7 @@ export async function ensureCorrectFileContent(
   content: string,
   baseLlmClient: BaseLlmClient,
   abortSignal: AbortSignal,
+  disableLLMCorrection: boolean = false,
 ): Promise<string> {
   const cachedResult = fileContentCorrectionCache.get(content);
   if (cachedResult) {
@@ -357,6 +368,15 @@ export async function ensureCorrectFileContent(
   if (!contentPotentiallyEscaped) {
     fileContentCorrectionCache.set(content, content);
     return content;
+  }
+
+  if (disableLLMCorrection) {
+    // If we can't use LLM, we should at least use the unescaped content
+    // as it's likely better than the original if it was detected as potentially escaped.
+    // unescapeStringForGeminiBug is a heuristic, not an LLM call.
+    const unescaped = unescapeStringForGeminiBug(content);
+    fileContentCorrectionCache.set(content, unescaped);
+    return unescaped;
   }
 
   const correctedContent = await correctStringEscaping(
