@@ -894,4 +894,51 @@ describe('WriteFileTool', () => {
       },
     );
   });
+
+  describe('disableLLMCorrection', () => {
+    const abortSignal = new AbortController().signal;
+
+    it('should NOT call ensureCorrectFileContent for a new file when disabled', async () => {
+      const filePath = path.join(rootDir, 'new_file_no_correction.txt');
+      const proposedContent = 'Proposed content.';
+
+      mockConfigInternal.getDisableLLMCorrection.mockReturnValue(true);
+
+      const result = await getCorrectedFileContent(
+        mockConfig,
+        filePath,
+        proposedContent,
+        abortSignal,
+      );
+
+      expect(mockEnsureCorrectFileContent).not.toHaveBeenCalled();
+      expect(mockEnsureCorrectEdit).not.toHaveBeenCalled();
+      // It should return the proposed content as is
+      expect(result.correctedContent).toBe(proposedContent);
+      expect(result.fileExists).toBe(false);
+    });
+
+    it('should NOT call ensureCorrectEdit for an existing file when disabled', async () => {
+      const filePath = path.join(rootDir, 'existing_file_no_correction.txt');
+      const originalContent = 'Original content.';
+      const proposedContent = 'Proposed content.';
+      fs.writeFileSync(filePath, originalContent, 'utf8');
+
+      mockConfigInternal.getDisableLLMCorrection.mockReturnValue(true);
+
+      const result = await getCorrectedFileContent(
+        mockConfig,
+        filePath,
+        proposedContent,
+        abortSignal,
+      );
+
+      expect(mockEnsureCorrectEdit).not.toHaveBeenCalled();
+      expect(mockEnsureCorrectFileContent).not.toHaveBeenCalled();
+      // It should return the proposed content as is
+      expect(result.correctedContent).toBe(proposedContent);
+      expect(result.originalContent).toBe(originalContent);
+      expect(result.fileExists).toBe(true);
+    });
+  });
 });
