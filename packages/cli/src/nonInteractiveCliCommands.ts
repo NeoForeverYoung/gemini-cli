@@ -19,6 +19,7 @@ import type { CommandContext } from './ui/commands/types.js';
 import { createNonInteractiveUI } from './ui/noninteractive/nonInteractiveUi.js';
 import type { LoadedSettings } from './config/settings.js';
 import type { SessionStatsState } from './ui/contexts/SessionContext.js';
+import { BuiltinCommandLoader } from './services/BuiltinCommandLoader.js';
 
 /**
  * Processes a slash command in a non-interactive environment.
@@ -40,7 +41,11 @@ export const handleSlashCommand = async (
   }
 
   const commandService = await CommandService.create(
-    [new McpPromptLoader(config), new FileCommandLoader(config)],
+    [
+      new McpPromptLoader(config),
+      new FileCommandLoader(config),
+      new BuiltinCommandLoader(config),
+    ],
     abortController.signal,
   );
   const commands = commandService.getCommands();
