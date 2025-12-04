@@ -420,6 +420,9 @@ export const useSlashCommandProcessor = (
                     case 'model':
                       actions.openModelDialog();
                       return { type: 'handled' };
+                    case 'list_models':
+                      actions.openModelDialog();
+                      return { type: 'handled' };
                     case 'permissions':
                       actions.openPermissionsDialog(
                         result.props as { targetDirectory?: string },

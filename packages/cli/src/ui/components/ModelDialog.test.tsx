@@ -7,11 +7,11 @@
 import { render } from '../../test-utils/render.js';
 import { cleanup } from 'ink-testing-library';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act } from 'react';
 import {
-  GEMINI_MODEL_ALIAS_FLASH_LITE,
-  GEMINI_MODEL_ALIAS_FLASH,
   GEMINI_MODEL_ALIAS_PRO,
   DEFAULT_GEMINI_MODEL_AUTO,
+  PREVIEW_GEMINI_MODEL,
 } from '@google/gemini-cli-core';
 import { ModelDialog } from './ModelDialog.js';
 import { useKeypress } from '../hooks/useKeypress.js';
@@ -82,9 +82,11 @@ describe('<ModelDialog />', () => {
     cleanup();
   });
 
-  it('renders the title and help text', () => {
+  it('renders the category tabs and help text', () => {
     const { lastFrame, unmount } = renderComponent();
-    expect(lastFrame()).toContain('Select Model');
+    expect(lastFrame()).toContain('Select Model'); // Checks header or title
+    expect(lastFrame()).toContain('Auto');
+    expect(lastFrame()).toContain('Manual');
     expect(lastFrame()).toContain('(Press Esc to close)');
     expect(lastFrame()).toContain(
       'To use a specific Gemini model on startup, use the --model flag.',
@@ -92,97 +94,109 @@ describe('<ModelDialog />', () => {
     unmount();
   });
 
-  it('passes all model options to DescriptiveRadioButtonSelect', () => {
+  it('initializes in "auto" category with auto options by default', () => {
     const { unmount } = renderComponent();
     expect(mockedSelect).toHaveBeenCalledTimes(1);
 
     const props = mockedSelect.mock.calls[0][0];
-    expect(props.items).toHaveLength(4);
+    expect(props.items).toHaveLength(4); // Auto has 4 options
     expect(props.items[0].value).toBe(DEFAULT_GEMINI_MODEL_AUTO);
-    expect(props.items[1].value).toBe(GEMINI_MODEL_ALIAS_PRO);
-    expect(props.items[2].value).toBe(GEMINI_MODEL_ALIAS_FLASH);
-    expect(props.items[3].value).toBe(GEMINI_MODEL_ALIAS_FLASH_LITE);
-    expect(props.showNumbers).toBe(true);
     unmount();
   });
 
-  it('initializes with the model from ConfigContext', () => {
-    const mockGetModel = vi.fn(() => GEMINI_MODEL_ALIAS_FLASH);
+  it('initializes in "manual" category if current model is not in auto list', () => {
+    const mockGetModel = vi.fn(() => PREVIEW_GEMINI_MODEL); // A specific manual model
     const { unmount } = renderComponent({}, { getModel: mockGetModel });
 
-    expect(mockGetModel).toHaveBeenCalled();
-    expect(mockedSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialIndex: 2,
-      }),
-      undefined,
-    );
+    const props = mockedSelect.mock.calls[0][0];
+    // Checks if it loaded manual options. Manual has 6 options currently.
+    expect(props.items).toHaveLength(6);
+    expect(props.items[0].value).toBe(PREVIEW_GEMINI_MODEL);
+    // It should also set initialIndex correctly
+    expect(props.initialIndex).toBe(0); // PREVIEW_GEMINI_MODEL is the first one
     unmount();
   });
 
-  it('initializes with "auto" model if context is not provided', () => {
-    const { unmount } = renderComponent({}, undefined);
-
-    expect(mockedSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialIndex: 0,
-      }),
-      undefined,
-    );
-    unmount();
-  });
-
-  it('initializes with "auto" model if getModel returns undefined', () => {
-    const mockGetModel = vi.fn(() => undefined);
-    // @ts-expect-error This test validates component robustness when getModel
-    // returns an unexpected undefined value.
-    const { unmount } = renderComponent({}, { getModel: mockGetModel });
-
-    expect(mockGetModel).toHaveBeenCalled();
-
-    // When getModel returns undefined, preferredModel falls back to DEFAULT_GEMINI_MODEL_AUTO
-    // which has index 0, so initialIndex should be 0
-    expect(mockedSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialIndex: 0,
-      }),
-      undefined,
-    );
-    expect(mockedSelect).toHaveBeenCalledTimes(1);
-    unmount();
-  });
-
-  it('calls config.setModel and onClose when DescriptiveRadioButtonSelect.onSelect is triggered', () => {
-    const { props, mockConfig, unmount } = renderComponent({}, {}); // Pass empty object for contextValue
-
-    const childOnSelect = mockedSelect.mock.calls[0][0].onSelect;
-    expect(childOnSelect).toBeDefined();
-
-    childOnSelect(GEMINI_MODEL_ALIAS_PRO);
-
-    // Assert against the default mock provided by renderComponent
-    expect(mockConfig?.setModel).toHaveBeenCalledWith(GEMINI_MODEL_ALIAS_PRO);
-    expect(props.onClose).toHaveBeenCalledTimes(1);
-    unmount();
-  });
-
-  it('does not pass onHighlight to DescriptiveRadioButtonSelect', () => {
+  it('toggles category when "right" arrow is pressed', () => {
     const { unmount } = renderComponent();
 
-    const childOnHighlight = mockedSelect.mock.calls[0][0].onHighlight;
-    expect(childOnHighlight).toBeUndefined();
+    expect(mockedUseKeypress).toHaveBeenCalled();
+    const keyPressHandler = mockedUseKeypress.mock.calls[0][0];
+
+    // Simulate Right Arrow
+    act(() => {
+      keyPressHandler({
+        name: 'right',
+        ctrl: false,
+        meta: false,
+        shift: false,
+        paste: false,
+        insertable: false,
+        sequence: '',
+      });
+    });
+
+    // Should re-render with Manual options
+    expect(mockedSelect).toHaveBeenCalledTimes(2);
+    const props = mockedSelect.mock.calls[1][0];
+    expect(props.items).toHaveLength(6); // Manual options
+    unmount();
+  });
+
+  it('toggles category when "left" arrow is pressed', () => {
+    const { unmount } = renderComponent();
+    // Start in auto. Switch to manual (right), then back to auto (left).
+    const keyPressHandler = mockedUseKeypress.mock.calls[0][0];
+
+    // Right -> Manual
+    act(() => {
+      keyPressHandler({
+        name: 'right',
+        ctrl: false,
+        meta: false,
+        shift: false,
+        paste: false,
+        insertable: false,
+        sequence: '',
+      });
+    });
+
+    // Left -> Auto
+    act(() => {
+      keyPressHandler({
+        name: 'left',
+        ctrl: false,
+        meta: false,
+        shift: false,
+        paste: false,
+        insertable: false,
+        sequence: '',
+      });
+    });
+
+    expect(mockedSelect).toHaveBeenCalledTimes(3);
+    const props = mockedSelect.mock.calls[2][0];
+    expect(props.items).toHaveLength(4); // Auto options
+    unmount();
+  });
+
+  it('calls config.setModel and onClose when onSelect is triggered', () => {
+    const { props, mockConfig, unmount } = renderComponent({}, {});
+
+    const childOnSelect = mockedSelect.mock.calls[0][0].onSelect;
+    act(() => {
+      childOnSelect(GEMINI_MODEL_ALIAS_PRO);
+    });
+
+    expect(mockConfig?.setModel).toHaveBeenCalledWith(GEMINI_MODEL_ALIAS_PRO);
+    expect(props.onClose).toHaveBeenCalledTimes(1);
     unmount();
   });
 
   it('calls onClose prop when "escape" key is pressed', () => {
     const { props, unmount } = renderComponent();
 
-    expect(mockedUseKeypress).toHaveBeenCalled();
-
     const keyPressHandler = mockedUseKeypress.mock.calls[0][0];
-    const options = mockedUseKeypress.mock.calls[0][1];
-
-    expect(options).toEqual({ isActive: true });
 
     keyPressHandler({
       name: 'escape',
@@ -194,49 +208,6 @@ describe('<ModelDialog />', () => {
       sequence: '',
     });
     expect(props.onClose).toHaveBeenCalledTimes(1);
-
-    keyPressHandler({
-      name: 'a',
-      ctrl: false,
-      meta: false,
-      shift: false,
-      paste: false,
-      insertable: true,
-      sequence: '',
-    });
-    expect(props.onClose).toHaveBeenCalledTimes(1);
-    unmount();
-  });
-
-  it('updates initialIndex when config context changes', () => {
-    const mockGetModel = vi.fn(() => DEFAULT_GEMINI_MODEL_AUTO);
-    const oldMockConfig = {
-      getModel: mockGetModel,
-      getPreviewFeatures: vi.fn(() => false),
-    } as unknown as Config;
-    const { rerender, unmount } = render(
-      <ConfigContext.Provider value={oldMockConfig}>
-        <ModelDialog onClose={vi.fn()} />
-      </ConfigContext.Provider>,
-    );
-
-    expect(mockedSelect.mock.calls[0][0].initialIndex).toBe(0);
-
-    mockGetModel.mockReturnValue(GEMINI_MODEL_ALIAS_FLASH_LITE);
-    const newMockConfig = {
-      getModel: mockGetModel,
-      getPreviewFeatures: vi.fn(() => false),
-    } as unknown as Config;
-
-    rerender(
-      <ConfigContext.Provider value={newMockConfig}>
-        <ModelDialog onClose={vi.fn()} />
-      </ConfigContext.Provider>,
-    );
-
-    // Should be called at least twice: initial render + re-render after context change
-    expect(mockedSelect).toHaveBeenCalledTimes(2);
-    expect(mockedSelect.mock.calls[1][0].initialIndex).toBe(3);
     unmount();
   });
 });

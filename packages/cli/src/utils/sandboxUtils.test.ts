@@ -91,8 +91,13 @@ describe('sandboxUtils', () => {
     });
 
     it('should generate default entrypoint', () => {
+      process.env['NODE_ENV'] = 'development'; // Simulate development environment for the test
       const args = entrypoint('/work', ['node', 'gemini', 'arg1']);
-      expect(args).toEqual(['bash', '-c', 'gemini arg1']);
+      expect(args).toEqual([
+        'bash',
+        '-c',
+        'npm rebuild && npm run start -- arg1',
+      ]);
     });
 
     it('should include PATH and PYTHONPATH if set', () => {

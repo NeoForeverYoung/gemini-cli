@@ -5,7 +5,7 @@
  */
 
 import type React from 'react';
-import { useCallback, useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { Box, Text } from 'ink';
 import {
   PREVIEW_GEMINI_MODEL,
@@ -29,22 +29,15 @@ interface ModelDialogProps {
   onClose: () => void;
 }
 
+type Category = 'auto' | 'manual';
+
 export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
   const config = useContext(ConfigContext);
 
   // Determine the Preferred Model (read once when the dialog opens).
   const preferredModel = config?.getModel() || DEFAULT_GEMINI_MODEL_AUTO;
 
-  useKeypress(
-    (key) => {
-      if (key.name === 'escape') {
-        onClose();
-      }
-    },
-    { isActive: true },
-  );
-
-  const options = useMemo(
+  const autoOptions = useMemo(
     () => [
       {
         value: DEFAULT_GEMINI_MODEL_AUTO,
@@ -77,11 +70,79 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
     [config],
   );
 
-  // Calculate the initial index based on the preferred model.
-  const initialIndex = useMemo(
-    () => options.findIndex((option) => option.value === preferredModel),
-    [preferredModel, options],
+  const manualOptions = useMemo(
+    () => [
+      {
+        value: PREVIEW_GEMINI_MODEL,
+        title: PREVIEW_GEMINI_MODEL,
+        description: ' ',
+        key: PREVIEW_GEMINI_MODEL,
+      },
+      {
+        value: DEFAULT_GEMINI_MODEL,
+        title: DEFAULT_GEMINI_MODEL,
+        description: ' ',
+
+        key: DEFAULT_GEMINI_MODEL,
+      },
+      {
+        value: 'gemini-3-flash-preview',
+        title: 'gemini-3-flash-preview',
+        description: ' ',
+
+        key: 'gemini-3-flash-preview',
+      },
+      {
+        value: DEFAULT_GEMINI_FLASH_MODEL,
+        title: DEFAULT_GEMINI_FLASH_MODEL,
+        description: ' ',
+
+        key: DEFAULT_GEMINI_FLASH_MODEL,
+      },
+      {
+        value: 'gemini-3-flash-lite-preview',
+        title: 'gemini-3-flash-lite-preview',
+        description: ' ',
+
+        key: 'gemini-3-flash-lite-preview',
+      },
+      {
+        value: DEFAULT_GEMINI_FLASH_LITE_MODEL,
+        title: DEFAULT_GEMINI_FLASH_LITE_MODEL,
+        description: ' ',
+
+        key: DEFAULT_GEMINI_FLASH_LITE_MODEL,
+      },
+    ],
+    [],
   );
+
+  const [category, setCategory] = useState<Category>(() => {
+    const isAuto = autoOptions.some((opt) => opt.value === preferredModel);
+    return isAuto ? 'auto' : 'manual';
+  });
+
+  useKeypress(
+    (key) => {
+      if (key.name === 'escape') {
+        onClose();
+      }
+      if (key.name === 'left' || key.name === 'right') {
+        setCategory((prev) => (prev === 'auto' ? 'manual' : 'auto'));
+      }
+    },
+    { isActive: true },
+  );
+
+  const currentOptions = category === 'auto' ? autoOptions : manualOptions;
+
+  // Calculate the initial index based on the preferred model.
+  const initialIndex = useMemo(() => {
+    const idx = currentOptions.findIndex(
+      (option) => option.value === preferredModel,
+    );
+    return idx >= 0 ? idx : 0;
+  }, [preferredModel, currentOptions]);
 
   // Handle selection internally (Autonomous Dialog).
   const handleSelect = useCallback(
@@ -96,13 +157,19 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
     [config, onClose],
   );
 
-  const header = config?.getPreviewFeatures()
-    ? 'Gemini 3 is now enabled.'
-    : 'Gemini 3 is now available.';
+  const header =
+    category === 'auto'
+      ? config?.getPreviewFeatures()
+        ? 'Gemini 3 is now enabled.'
+        : 'Gemini 3 is now available.'
+      : 'Select Manual Model';
 
-  const subheader = config?.getPreviewFeatures()
-    ? `To disable Gemini 3, disable "Preview features" in /settings.\nLearn more at https://goo.gle/enable-preview-features\n\nWhen you select Auto or Pro, Gemini CLI will attempt to use ${PREVIEW_GEMINI_MODEL} first, before falling back to ${DEFAULT_GEMINI_MODEL}.`
-    : `To use Gemini 3, enable "Preview features" in /settings.\nLearn more at https://goo.gle/enable-preview-features`;
+  const subheader =
+    category === 'auto'
+      ? config?.getPreviewFeatures()
+        ? `To disable Gemini 3, disable "Preview features" in /settings.\nLearn more at https://goo.gle/enable-preview-features\n\nWhen you select Auto or Pro, Gemini CLI will attempt to use ${PREVIEW_GEMINI_MODEL} first, before falling back to ${DEFAULT_GEMINI_MODEL}.`
+        : `To use Gemini 3, enable "Preview features" in /settings.\nLearn more at https://goo.gle/enable-preview-features`
+      : 'No routing or fallback. Just use what you choose.';
 
   return (
     <Box
@@ -114,16 +181,43 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
     >
       <Text bold>Select Model</Text>
 
-      <Box marginTop={1} marginBottom={1} flexDirection="column">
-        <ThemedGradient>
-          <Text>{header}</Text>
-        </ThemedGradient>
+      {/* Category Tabs */}
+      <Box flexDirection="row" marginTop={1} marginBottom={1} gap={2}>
+        <Text
+          bold={category === 'auto'}
+          color={
+            category === 'auto' ? theme.text.primary : theme.text.secondary
+          }
+          underline={category === 'auto'}
+        >
+          Auto
+        </Text>
+        <Text
+          bold={category === 'manual'}
+          color={
+            category === 'manual' ? theme.text.primary : theme.text.secondary
+          }
+          underline={category === 'manual'}
+        >
+          Manual
+        </Text>
+      </Box>
+
+      {/* Header / Subheader */}
+      <Box marginBottom={1} flexDirection="column">
+        {category === 'auto' ? (
+          <ThemedGradient>
+            <Text bold>{header}</Text>
+          </ThemedGradient>
+        ) : (
+          <Text bold>{header}</Text>
+        )}
         <Text>{subheader}</Text>
       </Box>
 
       <Box marginTop={1}>
         <DescriptiveRadioButtonSelect
-          items={options}
+          items={currentOptions}
           onSelect={handleSelect}
           initialIndex={initialIndex}
           showNumbers={true}
