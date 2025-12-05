@@ -436,6 +436,12 @@ function parsePowerShellCommandDetails(
   }
 
   try {
+    const env = {
+      ...process.env,
+      [POWERSHELL_COMMAND_ENV]: command,
+    };
+    delete env['__PSLockdownPolicy'];
+
     const result = spawnSync(
       executable,
       [
@@ -446,10 +452,7 @@ function parsePowerShellCommandDetails(
         POWERSHELL_PARSER_SCRIPT,
       ],
       {
-        env: {
-          ...process.env,
-          [POWERSHELL_COMMAND_ENV]: command,
-        },
+        env,
         encoding: 'utf-8',
       },
     );
