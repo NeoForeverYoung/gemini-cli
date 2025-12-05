@@ -436,7 +436,7 @@ function parsePowerShellCommandDetails(
   }
 
   try {
-    const env = {
+    const env: Record<string, string | undefined> = {
       ...process.env,
       [POWERSHELL_COMMAND_ENV]: command,
     };
