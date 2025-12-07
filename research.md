@@ -39,14 +39,19 @@ think deeply
 think deeply about the research needs
 
 3.  **Conduct Research**:
-    - **Initial Investigation**: Use `codebase_investigator` to inspect the
-      codebase, understanding architectural mapping and dependencies related to
-      the request.
-    - If the ticket implies web research, use `WebSearchTool`.
-    - Search the codebase (`codebase_investigator`) for relevant
-      implementations.
-    - Examine existing patterns.
-    - Identify constraints and opportunities.
+    - **CRITICAL PROTOCOL**: You are **FORBIDDEN** from writing code or running
+      generic searches yet.
+    - **MANDATORY FIRST STEP**: The **FIRST** tool call you make in this phase
+      **MUST** be `codebase_investigator`.
+      - _Why?_: You cannot research without a mental map of the system
+        architecture.
+    - **FORBIDDEN TOOLS (Initially)**: Do **NOT** use `search_file_content`
+      (grep) or `glob` until you have analyzed the investigator report.
+    - **Step 2: External (Optional)**: If you need docs/web info, use
+      `GoogleWebSearch` (only if the ticket explicitly requires it).
+    - **Step 3: Details**: Only **AFTER** the investigator report is in your
+      context, use `read_file` or `search_file_content` to examine specific
+      files it identified.
     - **Goal**: Document how things work today and potential paths forward. Be
       unbiased.
 
@@ -56,18 +61,25 @@ think deeply about the research needs
       - `YYYY-MM-DD`: Today's date.
       - `[ID]`: The 8-char ticket ID (e.g., `a1b2c3d4`).
       - `[description]`: Brief kebab-case topic (e.g., `parent-child-tracking`).
+    - **Constraint**: **DO NOT SKIP THIS STEP.** You cannot proceed to Planning
+      without this file.
 
 think deeply about the findings
 
 5.  **Synthesize research into actionable insights**: 5a. summarize key findings
     and technical decisions 5b. identify potential implementation approaches 5c.
-    note any risks or concerns discovered 5d. run `humanlayer thoughts sync` to
-    save the research
+    note any risks or concerns discovered
 
 6.  **Update the ticket**: 6a. attach the research document to the ticket by
     updating the `links` frontmatter (convert path to GitHub URL per
     `linear.md`) 6b. add a comment summarizing the research outcomes 6c. move
     the item to "Research in Review" by updating the `status` frontmatter
+
+7.  **Verify Deliverable**:
+    - **Action**: Use `read_file` or `ls` to confirm the research file actually
+      exists on disk.
+    - **Constraint**: If it is missing, you **MUST** create it now before
+      finishing.
 
 think deeply, use `WriteTodosTool` to track your tasks. When fetching tickets,
 get the top 10 items by priority but only work on ONE item - specifically the

@@ -144,31 +144,40 @@ export function getCoreSystemPrompt(
       customProcessPrompt = `
 # RESEARCH, PLAN, IMPLEMENT PROCESS
 
-You have been configured to follow a strict sequential process for every task. You must not deviate from this order.
+You have been configured to follow a strict sequential process. Your progress is measured ONLY by the creation of specific artifact files.
 
-## Step 1: Research
-1. **Action:** Perform the research phase by strictly following these instructions (contents of 'research.md'):
+## PHASE 1: RESEARCH
+- **PRIMARY OBJECTIVE**: Create a Research Document.
+- **DELIVERABLE PATH**: \`thoughts/shared/research/YYYY-MM-DD-ticket-[ID]-[description].md\`
+- **INSTRUCTIONS**:
+   1. **EXECUTE**: Use the instructions below (from 'research.md') to gather the necessary information.
 <research_instructions>
 ${researchContent}
 </research_instructions>
-2. **MANDATORY OUTPUT:** Immediately after completing the research steps, you **MUST** write your findings to a file following this exact pattern: 
-   \`thoughts/shared/research/YYYY-MM-DD-ticket-[ID]-[description].md\`
-   (Where ID is the ticket ID and description is the topic).
-3. **STOP:** Do not proceed to the Planning phase until you have successfully written this research file and updated the ticket as described in the instructions.
+   2. **WRITE**: Once you have the information, you **MUST** call \`write_file\` to create the **DELIVERABLE**.
+- **COMPLETION CRITERIA**: You cannot complete this phase until the file exists at the **DELIVERABLE PATH**. Check it with \`read_file\` or \`ls\`.
 
-## Step 2: Plan
-1. **Action:** Once the research file exists, perform the planning phase by strictly following these instructions (contents of 'plan.md'):
+## PHASE 2: PLAN
+- **PRIMARY OBJECTIVE**: Create an Implementation Plan.
+- **DELIVERABLE PATH**: \`thoughts/shared/plans/YYYY-MM-DD-ticket-[ID]-[description].md\`
+- **PREREQUISITE CHECK**:
+   - Check if Research Document exists at \`thoughts/shared/research/YYYY-MM-DD-ticket-[ID]-[description].md\`.
+   - **IF MISSING**: You **MUST** go back to **PHASE 1** and create it. Do not plan without research.
+- **INSTRUCTIONS**:
+   1. **EXECUTE**: Use the instructions below (from 'plan.md') to structure your plan.
 <plan_instructions>
 ${planContent}
 </plan_instructions>
-2. **MANDATORY OUTPUT:** Immediately after completing the planning steps, you **MUST** write your detailed implementation plan to a file following this exact pattern: 
-   \`thoughts/shared/plans/YYYY-MM-DD-ticket-[ID]-[description].md\`
-   (Where ID is the ticket ID and description is the topic).
-3. **STOP:** Do not proceed to the Implementation phase until you have successfully written this plan file and updated the ticket as described in the instructions.
+   2. **WRITE**: You **MUST** call \`write_file\` to create the **DELIVERABLE**.
+- **COMPLETION CRITERIA**: You cannot complete this phase until the file exists at the **DELIVERABLE PATH**.
 
-## Step 3: Implement
-1. **Action:** Only after both the research file (\`thoughts/shared/research/...\`) and the plan file (\`thoughts/shared/plans/...\`) have been created and linked to the ticket, proceed to implement the changes.
-2. **Guidance:** Strictly follow the plan you documented in the plan file.
+## PHASE 3: IMPLEMENT
+- **PRIMARY OBJECTIVE**: Modify the codebase.
+- **PREREQUISITES**:
+   1. Research Doc exists? (\`thoughts/shared/research/...\`)
+   2. Plan Doc exists? (\`thoughts/shared/plans/...\`)
+   - **IF MISSING**: You MUST go back and create them.
+- **INSTRUCTIONS**: Implement the changes by strictly following the plan document.
 `;
     } catch (e) {
       debugLogger.warn('Failed to read research.md or plan.md', e);

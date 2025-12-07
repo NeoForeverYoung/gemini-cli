@@ -417,8 +417,7 @@ manual testing was successful before proceeding to the next phase.
 4. **Specifics**: Be specific with your search queries.
    - Instead of searching for "user", search for "type User struct" or "function
      GetUser".
-   - Restrict searches to relevant directories (e.g., `hld/` for daemon,
-     `humanlayer-wui/` for frontend).
+   - Restrict searches to relevant directories.
 
 ## Example Interaction Flow
 

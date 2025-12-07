@@ -26,20 +26,29 @@ description:
 
 think deeply
 
-1. move the item to "Plan in Progress" by updating the ticket file's frontmatter
-   1a. read `create_plan.md` (or equivalent plan creation guidelines) 1b.
-   determine if the item has a linked implementation plan document based on the
-   `links` frontmatter section 1d. if the plan exists, you're done, respond with
-   a link to the ticket 1e. if the research is insufficient or has unanswered
-   questions, create a new plan document in `thoughts/shared/plans/` following
-   the instructions in the planning guidelines
+1. **UPDATE STATUS**: move the item to "Plan in Progress" by updating the ticket
+   file's frontmatter 1a. **READ GUIDELINES**: read `create_plan.md` (or
+   equivalent plan creation guidelines) 1b. **CHECK EXISTING**: determine if the
+   item has a linked implementation plan document based on the `links`
+   frontmatter section 1d. if the plan exists, you're done, respond with a link
+   to the ticket 1e. **CHECK RESEARCH**: if the research is insufficient or has
+   unanswered questions, **STOP** and change status back to "Research Needed".
+   1f. **CREATE PLAN**: if research is sufficient, **create a new plan
+   document** in `thoughts/shared/plans/` following the instructions in the
+   planning guidelines. **DO NOT** write code yet.
 
 think deeply
 
-2. when the plan is complete, attach the doc to the ticket by updating the
-   `links` frontmatter and create a terse comment with a link to it (re-read
-   `linear.md` if needed for format) 2a. move the item to "Plan in Review" by
-   updating the ticket file's frontmatter
+2. **LINK & FINALIZE**: when the plan is complete, attach the doc to the ticket
+   by updating the `links` frontmatter and create a terse comment with a link to
+   it (re-read `linear.md` if needed for format) 2a. **UPDATE STATUS**: move the
+   item to "Plan in Review" by updating the ticket file's frontmatter
+
+3. **VERIFY DELIVERABLE**:
+   - **Action**: Use `ls` or `read_file` to confirm the plan file actually
+     exists on disk.
+   - **Constraint**: If it is missing, you **MUST** create it now before
+     finishing.
 
 think deeply, use `WriteTodosTool` to track your tasks. When fetching tickets,
 get the top 10 items by priority but only work on ONE item - specifically the

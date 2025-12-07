@@ -70,23 +70,19 @@ to move faster and avoid rework.
 
 ## Important Conventions
 
-### URL Mapping for Thoughts Documents
+### Path Mapping for Thoughts Documents
 
-When referencing thoughts documents, always provide GitHub links in the `links`
-frontmatter section:
+When referencing thoughts documents, always provide the relative local path in
+the `links` frontmatter section:
 
-- `thoughts/shared/...` →
-  `https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/...`
-- `thoughts/allison/...` →
-  `https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/allison/...`
-- `thoughts/global/...` →
-  `https://github.com/humanlayer/thoughts/blob/main/global/...`
+- Use relative paths from the workspace root: `thoughts/shared/...`,
+  `thoughts/allison/...`, `thoughts/global/...`.
+- Do NOT convert these to GitHub URLs. Keep them as local file paths.
 
 ### Default Values
 
 - **Status**: Always create new tickets in "Triage" status.
-- **Project**: Default to "M U L T I C L A U D E" in the frontmatter unless told
-  otherwise.
+- **Project**: Default to "project" in the frontmatter unless told otherwise.
 - **Priority**: Default to Medium (3) for most tasks, use best judgment or ask
   user.
   - Urgent (1): Critical blockers, security issues
@@ -117,7 +113,7 @@ id: [8-char-hex-hash]
 title: [Ticket Title]
 status: [Status]
 priority: [Urgent|High|Medium|Low]
-project: M U L T I C L A U D E
+project: project
 created: [YYYY-MM-DD]
 links:
   - url: [URL]
@@ -182,7 +178,7 @@ labels: [hld, wui, meta, etc.]
    [Any specific technical approach or steps outlined]
 
    ## References
-   - Source: `thoughts/[path/to/document.md]` ([View on GitHub](converted GitHub URL))
+   - Source: `thoughts/[path/to/document.md]` ([Local File])
    - Related code: [any file:line references]
    - Parent ticket: [if applicable]
 
@@ -211,10 +207,10 @@ labels: [hld, wui, meta, etc.]
    title: [refined title]
    status: Triage
    priority: [selected priority]
-   project: M U L T I C L A U D E
+   project: project
    created: [YYYY-MM-DD]
    links:
-     - url: [GitHub URL to thoughts doc]
+     - url: [Local path to thoughts doc]
        title: [Document Title]
    labels: [derived labels]
    ---
