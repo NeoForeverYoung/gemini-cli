@@ -130,56 +130,60 @@ export function getCoreSystemPrompt(
 
   const interactiveMode = config.isInteractiveShellEnabled();
 
+  // Custom RPI (Research, Plan, Implement) Workflow Logic
+  const cwd = process.cwd();
+  const researchPath = path.join(cwd, 'research.md');
+  const planPath = path.join(cwd, 'plan.md');
+  let customProcessPrompt = '';
+
+  if (fs.existsSync(researchPath) && fs.existsSync(planPath)) {
+    try {
+      const researchContent = fs.readFileSync(researchPath, 'utf8');
+      const planContent = fs.readFileSync(planPath, 'utf8');
+
+      customProcessPrompt = `
+# RESEARCH, PLAN, IMPLEMENT PROCESS
+
+You have been configured to follow a strict sequential process for every task. You must not deviate from this order.
+
+## Step 1: Research
+1. **Action:** Perform the research phase by strictly following these instructions (contents of 'research.md'):
+<research_instructions>
+${researchContent}
+</research_instructions>
+2. **MANDATORY OUTPUT:** Immediately after completing the research steps, you **MUST** write your findings to a file following this exact pattern: 
+   \`thoughts/shared/research/YYYY-MM-DD-ticket-[ID]-[description].md\`
+   (Where ID is the ticket ID and description is the topic).
+3. **STOP:** Do not proceed to the Planning phase until you have successfully written this research file and updated the ticket as described in the instructions.
+
+## Step 2: Plan
+1. **Action:** Once the research file exists, perform the planning phase by strictly following these instructions (contents of 'plan.md'):
+<plan_instructions>
+${planContent}
+</plan_instructions>
+2. **MANDATORY OUTPUT:** Immediately after completing the planning steps, you **MUST** write your detailed implementation plan to a file following this exact pattern: 
+   \`thoughts/shared/plans/YYYY-MM-DD-ticket-[ID]-[description].md\`
+   (Where ID is the ticket ID and description is the topic).
+3. **STOP:** Do not proceed to the Implementation phase until you have successfully written this plan file and updated the ticket as described in the instructions.
+
+## Step 3: Implement
+1. **Action:** Only after both the research file (\`thoughts/shared/research/...\`) and the plan file (\`thoughts/shared/plans/...\`) have been created and linked to the ticket, proceed to implement the changes.
+2. **Guidance:** Strictly follow the plan you documented in the plan file.
+`;
+    } catch (e) {
+      debugLogger.warn('Failed to read research.md or plan.md', e);
+    }
+  }
+
   let basePrompt: string;
   if (systemMdEnabled) {
     basePrompt = fs.readFileSync(systemMdPath, 'utf8');
   } else {
-    // Define State 1 (Research) Logic based on whether Investigator is available
-    const researchStateLogic = enableCodebaseInvestigator
-      ? `
-    **STATE 1: RESEARCH (Agent-Assisted)**
-    - **Trigger:** You have NOT found a Research Doc (\`thoughts/shared/research/...\`) for this task.
-    - **PRIMARY Tool:** \`${CodebaseInvestigatorAgent.name}\`.
-      - **Instruction:** You MUST use the Investigator Agent. It is designed to digest large amounts of code without filling your context window.
-    - **RESTRICTED Tools:** Do NOT use \`${READ_FILE_TOOL_NAME}\` or \`${GREP_TOOL_NAME}\` manually in this state unless the Investigator fails or requests it.
-    - **BANNED Tools:** \`${EDIT_TOOL_NAME}\`, \`${WRITE_FILE_TOOL_NAME}\` (except for creating the final research doc).
-    - **Goal:** Delegate the understanding to the Agent. Create the Research Doc only after the Agent reports back.
-      `
-      : `
-    **STATE 1: RESEARCH (Manual)**
-    - **Trigger:** You have NOT found a Research Doc for this task.
-    - **Allowed Tools:** \`${GLOB_TOOL_NAME}\`, \`${GREP_TOOL_NAME}\`, \`${READ_FILE_TOOL_NAME}\`.
-    - **BANNED Tools:** \`${EDIT_TOOL_NAME}\`, \`${WRITE_FILE_TOOL_NAME}\` (except for creating the final research doc).
-    - **Goal:** Manually explore the codebase. Create the Research Doc.
-      `;
-
-    const protocolEnforcement = `
-    **CRITICAL INSTRUCTION: STATE MACHINE ENFORCEMENT**
-    You are a State Machine. You must act according to your current state.
-    
-    **YOUR FIRST OUTPUT MUST BE:** "Current State: [Research|Planning|Implementation]"
-
-    ${researchStateLogic}
-    
-    **STATE 2: PLANNING**
-    - **Trigger:** Research Doc exists, but you have NOT found a Plan Doc (\`thoughts/shared/plans/...\`).
-    - **Allowed Tools:** \`${READ_FILE_TOOL_NAME}\` (to read research), \`${WRITE_FILE_TOOL_NAME}\` (to write plan).
-    - **BANNED Tools:** \`${EDIT_TOOL_NAME}\`, \`${SHELL_TOOL_NAME}\` (for running code).
-    - **Action:** Create the Plan Doc based on the Research.
-
-    **STATE 3: IMPLEMENTATION**
-    - **Trigger:** Both Research Doc AND Plan Doc exist.
-    - **Allowed Tools:** ALL.
-    - **Action:** Implement the code following the Plan Doc.
-    `;
-
     const promptConfig = {
       preamble: `You are ${interactiveMode ? 'an interactive ' : 'a non-interactive '}CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and efficiently, adhering strictly to the following instructions and utilizing your available tools.`,
       coreMandates: `
 # Core Mandates
 
-- **Universal Process:** For EVERY request (no matter how simple), you must strictly follow the **Research -> Plan -> Implement** cycle. You are PROHIBITED from writing implementation code until a Research Doc and a Plan Doc exist.
-- **Context Efficiency:** ${enableCodebaseInvestigator ? `ALWAYS prefer using the **${CodebaseInvestigatorAgent.name}** for gathering context. It saves your limited token window. Do not read raw files manually if the Investigator can do it.` : 'Be mindful of token limits when reading files.'}
 - **Conventions:** Rigorously adhere to existing project conventions when reading or modifying code. Analyze surrounding code, tests, and configuration first.
 - **Libraries/Frameworks:** NEVER assume a library/framework is available or appropriate. Verify its established usage within the project (check imports, configuration files like 'package.json', 'Cargo.toml', 'requirements.txt', 'build.gradle', etc., or observe neighboring files) before employing it.
 - **Style & Structure:** Mimic the style (formatting, naming), structure, framework choices, typing, and architectural patterns of existing code in the project.
@@ -194,54 +198,42 @@ export function getCoreSystemPrompt(
   - **Continue the work** You are not to interact with the user. Do your best to complete the task at hand, using your best judgement and avoid asking user for any additional information.`
           : ''
       }`,
-
+      customProcess: customProcessPrompt,
       primaryWorkflows_prefix: `
 # Primary Workflows
 
 ## Software Engineering Tasks
-
-${protocolEnforcement}
-
-If you are in **STATE 3 (Implementation)**, follow this sequence:
-1. **Understand Context:** Use '${GREP_TOOL_NAME}' and '${GLOB_TOOL_NAME}' to understand file structures. Use '${READ_FILE_TOOL_NAME}' to validate assumptions.
-2. **Execute Plan:** Follow the steps in the created Plan document.`,
+When requested to perform tasks like fixing bugs, adding features, refactoring, or explaining code, follow this sequence:
+1. **Understand:** Think about the user's request and the relevant codebase context. Use '${GREP_TOOL_NAME}' and '${GLOB_TOOL_NAME}' search tools extensively (in parallel if independent) to understand file structures, existing code patterns, and conventions. 
+Use '${READ_FILE_TOOL_NAME}' to understand context and validate any assumptions you may have. If you need to read multiple files, you should make multiple parallel calls to '${READ_FILE_TOOL_NAME}'.
+2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`,
 
       primaryWorkflows_prefix_ci: `
 # Primary Workflows
 
 ## Software Engineering Tasks
-
-${protocolEnforcement}
-
-If you are in **STATE 3 (Implementation)**, follow this sequence:
-1. **Understand & Strategize:** Use '${CodebaseInvestigatorAgent.name}' for any remaining system-wide analysis.
-2. **Execute Plan:** Follow the steps in the created Plan document.`,
+When requested to perform tasks like fixing bugs, adding features, refactoring, or explaining code, follow this sequence:
+1. **Understand & Strategize:** Think about the user's request and the relevant codebase context. When the task involves **complex refactoring, codebase exploration or system-wide analysis**, your **first and primary tool** must be '${CodebaseInvestigatorAgent.name}'. Use it to build a comprehensive understanding of the code, its structure, and dependencies. For **simple, targeted searches** (like finding a specific function name, file path, or variable declaration), you should use '${GREP_TOOL_NAME}' or '${GLOB_TOOL_NAME}' directly.
+2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. If '${CodebaseInvestigatorAgent.name}' was used, do not ignore the output of '${CodebaseInvestigatorAgent.name}', you must use it as the foundation of your plan. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`,
 
       primaryWorkflows_prefix_ci_todo: `
 # Primary Workflows
 
 ## Software Engineering Tasks
-
-${protocolEnforcement}
-
-If you are in **STATE 3 (Implementation)**, follow this sequence:
-1. **Understand & Strategize:** Use '${CodebaseInvestigatorAgent.name}' if needed.
-2. **Execute Plan:** Use \`${WRITE_TODOS_TOOL_NAME}\` to track the steps from the created Plan document.`,
+When requested to perform tasks like fixing bugs, adding features, refactoring, or explaining code, follow this sequence:
+1. **Understand & Strategize:** Think about the user's request and the relevant codebase context. When the task involves **complex refactoring, codebase exploration or system-wide analysis**, your **first and primary tool** must be '${CodebaseInvestigatorAgent.name}'. Use it to build a comprehensive understanding of the code, its structure, and dependencies. For **simple, targeted searches** (like finding a specific function name, file path, or variable declaration), you should use '${GREP_TOOL_NAME}' or '${GLOB_TOOL_NAME}' directly.
+2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. If '${CodebaseInvestigatorAgent.name}' was used, do not ignore the output of '${CodebaseInvestigatorAgent.name}', you must use it as the foundation of your plan. For complex tasks, break them down into smaller, manageable subtasks and use the \`${WRITE_TODOS_TOOL_NAME}\` tool to track your progress. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`,
 
       primaryWorkflows_todo: `
 # Primary Workflows
 
 ## Software Engineering Tasks
-
-${protocolEnforcement}
-
-If you are in **STATE 3 (Implementation)**, follow this sequence:
-1. **Understand Context:** Use '${GREP_TOOL_NAME}' and '${GLOB_TOOL_NAME}' to understand file structures.
-2. **Execute Plan:** Use \`${WRITE_TODOS_TOOL_NAME}\` to track the steps from the created Plan document.`,
-
+When requested to perform tasks like fixing bugs, adding features, refactoring, or explaining code, follow this sequence:
+1. **Understand:** Think about the user's request and the relevant codebase context. Use '${GREP_TOOL_NAME}' and '${GLOB_TOOL_NAME}' search tools extensively (in parallel if independent) to understand file structures, existing code patterns, and conventions. Use '${READ_FILE_TOOL_NAME}' to understand context and validate any assumptions you may have. If you need to read multiple files, you should make multiple parallel calls to '${READ_FILE_TOOL_NAME}'.
+2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. For complex tasks, break them down into smaller, manageable subtasks and use the \`${WRITE_TODOS_TOOL_NAME}\` tool to track your progress. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`,
       primaryWorkflows_suffix: `3. **Implement:** Use the available tools (e.g., '${EDIT_TOOL_NAME}', '${WRITE_FILE_TOOL_NAME}' '${SHELL_TOOL_NAME}' ...) to act on the plan, strictly adhering to the project's established conventions (detailed under 'Core 
 Mandates').
-4. **Verify (Tests):** If applicable and feasible, verify the changes using the project's testing procedures. Identify the correct test commands and frameworks by examining 'README' files, build/package configuration (e.g., 'package.json'), or existing test execution patterns. NEVER assume standard test commands.
+4. **Verify (Tests):** You MUST verify your changes using the project's testing procedures. Identify the correct test commands and frameworks by examining 'README' files, build/package configuration (e.g., 'package.json'), or existing test execution patterns. Run the specific tests related to your changes. If tests fail, analyze the output, fix the code, and re-run the tests until they pass. NEVER assume standard test commands.
 5. **Verify (Standards):** VERY IMPORTANT: After making code changes, execute the project-specific build, linting and type-checking commands (e.g., 'tsc', 'npm run lint', 'ruff check .') that you have identified for this project (or obtained from the user). This ensures code quality and adherence to standards.${interactiveMode ? " If unsure about these commands, you can ask the user if they'd like you to run them and if so how to." : ''}
 6. **Finalize:** After all verification passes, consider the task complete. Do not remove or revert any changes or created files (like tests). Await the user's next instruction.
 
@@ -384,6 +376,7 @@ Your core function is efficient and safe assistance. Balance extreme conciseness
     const orderedPrompts: Array<keyof typeof promptConfig> = [
       'preamble',
       'coreMandates',
+      'customProcess', // Added custom process workflow here
     ];
 
     if (enableCodebaseInvestigator && enableWriteTodosTool) {

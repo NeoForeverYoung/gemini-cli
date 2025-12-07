@@ -39,8 +39,11 @@ think deeply
 think deeply about the research needs
 
 3.  **Conduct Research**:
-    - If the ticket implies web research, use `GoogleWebSearch`.
-    - Search the codebase (`search_file_content`, `glob`) for relevant
+    - **Initial Investigation**: Use `codebase_investigator` to inspect the
+      codebase, understanding architectural mapping and dependencies related to
+      the request.
+    - If the ticket implies web research, use `WebSearchTool`.
+    - Search the codebase (`codebase_investigator`) for relevant
       implementations.
     - Examine existing patterns.
     - Identify constraints and opportunities.
