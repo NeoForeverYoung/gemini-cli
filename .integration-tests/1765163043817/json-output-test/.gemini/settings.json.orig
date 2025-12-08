@@ -1,0 +1,26 @@
+{
+  "general": {
+    "disableAutoUpdate": true,
+    "previewFeatures": false
+  },
+  "telemetry": {
+    "enabled": true,
+    "target": "local",
+    "otlpEndpoint": "",
+    "outfile": "/home/runner/work/gemini-cli/gemini-cli/release/.integration-tests/1765163043817/json-output-test/telemetry.log"
+  },
+  "security": {
+    "auth": {
+      "selectedType": "gemini-api-key"
+    }
+  },
+  "ui": {
+    "useAlternateBuffer": true
+  },
+  "model": "gemini-2.5-pro",
+  "sandbox": false,
+  "ide": {
+    "enabled": false,
+    "hasSeenNudge": true
+  }
+}
