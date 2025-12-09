@@ -11,16 +11,38 @@ Agent 开发的路线。每个阶段都包含阅读材料与实践任务，建�
 - [x] 打开 `.gemini/settings.json`，理解默认配置项与 schema（参考
       `schemas/settings.schema.json`）。
 
-## 1. 架构速览
+## 1. 架构速览（细化执行单）
 
-- [ ] 阅读 `docs/architecture.md` 与
-      `docs/core/index.md`，绘制一张模块关系草图（可用 mermaid 或手绘照片，放入
-      `mdocs/notes/`）。
-- [ ] 粗读包结构：`packages/core`（核心执行/工具 API）、`packages/cli`（用户界面）、`packages/test-utils`。
-- [ ] 记录目前理解的关键数据流（用户输入 → 解析 → 工具调用 → 输出）并保存到
-      `mdocs/notes/dataflow.md`。
+目标：读完后能画出数据流，知道入口文件、核心服务和工具调用链，并能在本地跑最小交互验证。
 
-## 2. CLI 与命令层
+- [x] 阅读 `docs/architecture.md`、`docs/core/index.md`，并在
+      `mdocs/architecture-mermaid.md` 或手绘里落盘模块关系。
+- [ ] 探索代码入口与核心模块（建议依次执行，做笔记到
+      `mdocs/notes/arch-notes.md`）：
+  - [ ] CLI 入口与 UI：`packages/cli/src/gemini.tsx`（`startInteractiveUI`、`main`），梳理启动流程 -> 配置加载 ->
+        UI 渲染。
+  - [ ] 命令层：浏览 `packages/cli/src/ui/commands` 下的内置命令（尤其
+        `/restore`、`/chat`），记录命令注册方式和 action 签名。
+  - [ ] 流水线主 hook：`packages/cli/src/ui/hooks/useGeminiStream.ts`，标记“用户输入 → 模型回复/工具请求 → 批准/执行 → 历史更新”的关键函数。
+  - [ ] Core 对外接口：`packages/core/index.ts` 和
+        `packages/core/src/core`（logger、config、services），确认 CLI 如何调用 Core。
+  - [ ] 工具注册：快速扫 `packages/core/src/tools`
+        目录结构，记下文件读写、shell、检索类工具的位置。
+- [ ] 绘制数据流（放 `mdocs/notes/dataflow.md`），至少覆盖：
+  - [ ] 用户输入从 CLI 到 Core 的传递路径（函数/模块名）。
+  - [ ] 模型请求工具的决策点（在哪判断/调度工具）。
+  - [ ] 工具执行到结果返回的路径，以及在哪落盘/更新历史。
+- [ ] 最小交互实操：
+  - [ ] 本地运行：`npm run cli -- --help`、输入一条用户消息（不调用工具），观察输出。
+  - [ ] 触发只读工具：执行 `list_directory` 或
+        `read_file`，观察是否需要批准、历史如何更新。
+  - [ ] （如开启 checkpointing）批准一次写入类工具前后，确认是否生成 checkpoint 文件于
+        `~/.gemini/tmp/<hash>/checkpoints`。
+- [ ] 自检与总结：
+  - [ ] 在 `mdocs/notes/arch-notes.md` 记录：入口文件、关键函数、数据流节点。
+  - [ ] 补一条“我现在能解释的流程”短文（100 字），放在同一文件，用于后续复盘。
+
+## 2. CLI 与命令层（后续粗略，按需细化）
 
 - [ ] 阅读 `docs/cli` 目录中的 `index.md`、`get-started`
       小节，列出常用命令与参数。
