@@ -1,5 +1,9 @@
 1. GEMINI.md 是干啥的？
 
+- 可以这样理解，README.md是给人阅读的。
+- GEMINI.md是同时给AI和人看的，制定一些规范，让AI按照该项目的规范来。
+- 可观测，数据库访问，DAO设计等等，都可以作为规范。
+
 - 是仓库内的贡献与工程实践指南，主要用途：
 - 说明提交前要跑的全量检查命令：`npm run preflight`（包含 build、test、typecheck、lint）。
 - 测试规范：使用 Vitest，文件位置、mock 方式、异步测试、React/Ink 测试要点等。
@@ -84,3 +88,55 @@ if (commitHash) { gitService.restoreProjectFromSnapshot(commitHash); yield info 
 补充：`/chat save/resume`
 是手动对话 checkpoint，存放在同一临时目录，但与自动文件修改 checkpoint 区分；主流程仍以自动快照 +
 `/restore` 为主。
+
+3. Gemini CLI for the enterprise. 在企业环境中的核心要点与示例
+
+- 比如可以统一控制，go-redis的库以及推荐版本，七彩石的版本，trpc-go或者trpc-cpp的版本问题。让AI知道这些关键的知识库
+
+* 核心关注点：
+  - 配置集中化：用系统级 `settings.json` 模板（放在企业镜像或配置管理中），限定
+    `general.checkpointing`、模型/region、超时与输出大小等。
+  - 策略与权限：用 Policy Engine（参考
+    `bundle/policies/*.toml`）收紧写权限、限制可执行工具、限定目录访问范围，必要时使用只读策略。
+  - 凭证与网络：集中配置服务账号/代理（例如 HTTP(S)/NO_PROXY 环境变量），避免个人凭证散落；必要时将 CLI 运行在受控跳板/容器内。
+  - 审计与回滚：启用 checkpointing，影子 Git 仓保留修改快照；配合 `/restore`
+    便于追溯和回滚。结合日志（`~/.gemini/tmp/<hash>/logs.json`）记录会话。
+  - 扩展管控：仅允许经过审核的 extensions（可集中分发 `extensions` 目录和
+    `gemini-extension.json`），禁用未授权工具。
+  - 分发方式：提供预装 Node/npm 依赖与模板设置的镜像/包，或用脚本在用户首次启动时下发标准配置与策略。
+
+* 参考场景示例：
+  1. 只读审阅场景：在模板设置里开启 checkpointing，加载
+     `bundle/policies/read-only.toml`，仅允许
+     `list_directory`、`read_file`、`ripgrep` 等查询工具，禁止写入类工具。
+  2. 安全改写场景：启用 checkpointing + 自定义策略（限制写入目录到
+     `src/`），要求每次写入类工具在获得批准后才执行，并依赖影子仓快照可
+     `/restore`。
+  3. 受限网络/代理：在企业代理下运行 CLI，预置环境变量
+     `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`，并在 `settings.json`
+     中统一模型/region，避免个人配置漂移。
+  4. 标准化分发：在 CI 产出带有预设
+     `settings.json`、策略文件、受控 extensions 的压缩包或容器镜像，开发者解压/拉取即可获得一致体验。
+
+4. Token caching and cost optimization 这个具体是怎么做的？
+
+- 思路拆解：
+  - 避免重复请求：对固定的系统提示、项目上下文片段做缓存；对近期相同用户问句 + 上下文组合可做幂等缓存，命中后直接复用模型输出（适合 FAQ/常见操作）。
+  - 输入截断与压缩：对长上下文使用 summarization/关键片段提取，或用 embeddings 选段，减少无关 token。
+  - 流水线并行与合并：并行拉取必需信息，减少多轮交互；可将多个小请求合并为一次批量请求（取决于模型 API 支持）。
+  - 低成本模型优先：默认使用中档模型完成搜索、路由、草稿，只有在需要高质量生成时再切换高阶模型；在设置中固定“默认模型”和“高阶模型”双轨。
+  - 温度与输出上限：降低 `max_output_tokens`
+    与温度，减少无效铺陈；对长回复场景用分段生成+按需追加。
+  - 记忆与会话截断：定期对历史做“摘要 + 关键消息留存”，保留工具调用结果与用户确认，丢弃冗余闲聊，减少上下文长度。
+  - 结果落地：对确定性工具结果写入本地文件/缓存，下次直接读取文件而非重复调用模型。
+
+- 示例做法：
+  1. FAQ/模板复用：为常见命令/操作写脚本或 Markdown
+     FAQ，结合 embeddings 建一个本地向量索引（小模型或本地嵌入），命中后不调用大模型或仅用小模型复述。
+  2. 双模型路由：在 `settings.json`
+     配置默认模型为中档，小范围场景（如生成命令、解释错误）直接用默认模型；代码生成/大段文档才切到高阶模型，并设定
+     `max_output_tokens`。
+  3. 上下文裁剪：对会话历史每 N 轮做一次“摘要消息”并替换早期多轮聊天，保留最近工具返回和用户指令；对文件内容先用
+     `ripgrep`/分块摘要，再把关键片段送入模型。
+  4. 检索优先：将项目文档/规范（如依赖版本、内部最佳实践）放入本地向量库，先检索再提问，减少模型反复探索同一资料的 token 消耗。
+  5. 输出限流：为长文档生成分段提示，每段限制 tokens，并在用户确认后才继续下一段，防止一次性超长输出导致成本上升。
