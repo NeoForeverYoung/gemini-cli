@@ -1,7 +1,9 @@
-1. GEMINI.md 是干啥的？
+1. GEMINI.md 是干啥的？策略二：Memory（自建笔记）更优雅的方法：让 Agent 自己做笔记。Agent 定期把重要信息写入外部文件。context 重置后，读取笔记恢复记忆。一个有趣的例子是 Claude
+   Plays Pokémon——一个 Twitch 直播，Claude 在玩 Pokémon
+   Red。游戏需要跨越数千步保持连贯性：记住目标、追踪进度、学习哪些攻击对哪些敌人有效。Claude 不用 compaction。它有一个小型文件系统，可以写 markdown 笔记。每次 context 重置，它读取自己的笔记继续玩。这个思路正在被训练进模型——让 Agent 天生就会"做笔记"，而不需要显式提示。
 
 - 可以这样理解，README.md是给人阅读的。
-- GEMINI.md是同时给AI和人看的，制定一些规范，让AI按照该项目的规范来。
+- GEMINI.md是同时给AI和人看的，制定一些规范，让AI按照该项目的规范来。是一个memory文件
 - 可观测，数据库访问，DAO设计等等，都可以作为规范。
 
 - 是仓库内的贡献与工程实践指南，主要用途：
@@ -140,3 +142,30 @@ if (commitHash) { gitService.restoreProjectFromSnapshot(commitHash); yield info 
      `ripgrep`/分块摘要，再把关键片段送入模型。
   4. 检索优先：将项目文档/规范（如依赖版本、内部最佳实践）放入本地向量库，先检索再提问，减少模型反复探索同一资料的 token 消耗。
   5. 输出限流：为长文档生成分段提示，每段限制 tokens，并在用户确认后才继续下一段，防止一次性超长输出导致成本上升。
+
+5. Google Cloud — “Choose a design pattern for your agentic AI
+   system” 从架构角度帮助你判断“你的任务适合哪种 agent 模式”：单 agent /
+   multi-agent / manager pattern / orchestration
+   pattern。适合在系统化 / 工程化基础上设计 agent 的人。
+
+- 什么时候选哪种模式（经验法则）：
+  - 单 Agent：需求清晰、上下文集中、工具少（≤3），强调低延迟与可控输出，例如 FAQ、简单代码改写。
+  - Multi-Agent（松耦合协作）：子任务天然分工（检索/规划/执行），但不需要严格调度；用共享内存或黑板模式汇总结果。
+  - Manager/Worker（层级模式）：需要动态分解任务、派单、验收的场景；Manager 负责规划与路由，Workers 负责专业子任务（如代码生成、数据清洗、评审）。
+  - Orchestration（流程编排/有向图）：任务步骤、前后置依赖明确（如 ETL、评审流水线、CI/CD 自动修复），适合 DAG/状态机式控制，易于重试与可观测。
+  - 约束驱动选择：硬实时/严格合规 → 更倾向 Orchestration；探索式/开放式 →
+    Multi-Agent + 评审；成本敏感/冷启动小 → 单 Agent。
+
+- 设计检查单：
+  - 数据流与状态：是否需要共享记忆、向量检索、或每个子 Agent 自己取数？结果如何合并、去重、排序？
+  - 失败与重试：哪些节点可幂等重试？是否需要超时、并发上限、熔断？
+  - 评审与安全：是否需要评审 Agent/规则（policy/hook）对输出或工具调用做把关？
+  - 观测性：埋点/日志/事件流如何关联到每个 Agent、每次工具调用？
+  - 成本与延迟：并行与分层是否会增加 token 成本？是否需要分档模型（草稿 vs 精修）？
+
+- 组合示例：
+  1. 代码改错流水线（Orchestration）：检索相关文件 → 静态分析/测试 → 生成修复 → 自检（lint/test）→ 评审 Agent
+     → 出补丁；可对每步设置超时与重试。
+  2. 知识库问答（Multi-Agent + 评审）：检索 Agent 召回 → 生成 Agent 草稿 → 评审 Agent 做事实一致性检查 → 最终输出；可并行多路检索/模型，评审选优。
+  3. 项目协作助手（Manager/Worker）：Manager 分解需求并分配到特定 Worker（代码生成、文档撰写、测试编写），收集结果后汇总与质检。
+  4. 轻量命令伴侣（单 Agent）：本地开发命令提示、短答、文件定位，强调低延迟与最小依赖。

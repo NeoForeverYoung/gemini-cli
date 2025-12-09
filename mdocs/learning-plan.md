@@ -5,13 +5,11 @@ Agent 开发的路线。每个阶段都包含阅读材料与实践任务，建�
 
 ## 0. 环境与基础
 
-- [ ] 克隆/更新仓库，运行 `npm install`，确认能执行 `npm test -- --listTests`。
-- [ ] 浏览
+- [x] 克隆/更新仓库，运行 `npm install`，确认能执行 `npm test -- --listTests`。
+- [x] 浏览
       `README.md`、`docs/index.md`，记录核心名词（Agent、Tool、Hook、Policy）。
-- [ ] 打开 `.gemini/settings.json`，理解默认配置项与 schema（参考
+- [x] 打开 `.gemini/settings.json`，理解默认配置项与 schema（参考
       `schemas/settings.schema.json`）。
-- [ ] 运行一次 CLI：`npm run cli -- --help`，并截图输出保存到
-      `mdocs/screenshots/cli-help.png`（自建目录）。
 
 ## 1. 架构速览
 
