@@ -1,0 +1,2606 @@
+{
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/policy-engine.ts": {
+    "language": "TypeScript",
+    "code": 253,
+    "comment": 54,
+    "blank": 33
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/stable-stringify.ts": {
+    "language": "TypeScript",
+    "code": 54,
+    "comment": 65,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/config.ts": {
+    "language": "TypeScript",
+    "code": 164,
+    "comment": 66,
+    "blank": 26
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/config.test.ts": {
+    "language": "TypeScript",
+    "code": 725,
+    "comment": 53,
+    "blank": 84
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/types.ts": {
+    "language": "TypeScript",
+    "code": 92,
+    "comment": 106,
+    "blank": 33
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/index.ts": {
+    "language": "TypeScript",
+    "code": 4,
+    "comment": 5,
+    "blank": 2
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/toml-loader.test.ts": {
+    "language": "TypeScript",
+    "code": 398,
+    "comment": 8,
+    "blank": 49
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/toml-loader.ts": {
+    "language": "TypeScript",
+    "code": 370,
+    "comment": 92,
+    "blank": 45
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/fallback/handler.ts": {
+    "language": "TypeScript",
+    "code": 221,
+    "comment": 24,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/fallback/handler.test.ts": {
+    "language": "TypeScript",
+    "code": 609,
+    "comment": 14,
+    "blank": 89
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/fallback/types.ts": {
+    "language": "TypeScript",
+    "code": 23,
+    "comment": 12,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/index.test.ts": {
+    "language": "TypeScript",
+    "code": 6,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/chatCompressionService.ts": {
+    "language": "TypeScript",
+    "code": 196,
+    "comment": 28,
+    "blank": 24
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/policy/policy-engine.test.ts": {
+    "language": "TypeScript",
+    "code": 1280,
+    "comment": 53,
+    "blank": 208
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/chatRecordingService.test.ts": {
+    "language": "TypeScript",
+    "code": 359,
+    "comment": 9,
+    "blank": 37
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/sessionSummaryUtils.test.ts": {
+    "language": "TypeScript",
+    "code": 319,
+    "comment": 14,
+    "blank": 60
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/shellExecutionService.test.ts": {
+    "language": "TypeScript",
+    "code": 1068,
+    "comment": 53,
+    "blank": 166
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/sessionSummaryService.ts": {
+    "language": "TypeScript",
+    "code": 113,
+    "comment": 27,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/gitService.test.ts": {
+    "language": "TypeScript",
+    "code": 216,
+    "comment": 8,
+    "blank": 36
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/contextManager.ts": {
+    "language": "TypeScript",
+    "code": 80,
+    "comment": 18,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/fileSystemService.ts": {
+    "language": "TypeScript",
+    "code": 25,
+    "comment": 30,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/gitService.ts": {
+    "language": "TypeScript",
+    "code": 100,
+    "comment": 13,
+    "blank": 20
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/loopDetectionService.ts": {
+    "language": "TypeScript",
+    "code": 413,
+    "comment": 112,
+    "blank": 78
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/fileDiscoveryService.ts": {
+    "language": "TypeScript",
+    "code": 73,
+    "comment": 16,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/sessionSummaryUtils.ts": {
+    "language": "TypeScript",
+    "code": 44,
+    "comment": 17,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/loopDetectionService.test.ts": {
+    "language": "TypeScript",
+    "code": 795,
+    "comment": 62,
+    "blank": 164
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/fileSystemService.test.ts": {
+    "language": "TypeScript",
+    "code": 41,
+    "comment": 5,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/contextManager.test.ts": {
+    "language": "TypeScript",
+    "code": 118,
+    "comment": 9,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/modelConfigService.test.ts": {
+    "language": "TypeScript",
+    "code": 634,
+    "comment": 16,
+    "blank": 51
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/sessionSummaryService.test.ts": {
+    "language": "TypeScript",
+    "code": 772,
+    "comment": 27,
+    "blank": 140
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/modelConfig.integration.test.ts": {
+    "language": "TypeScript",
+    "code": 218,
+    "comment": 29,
+    "blank": 26
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/modelConfigService.ts": {
+    "language": "TypeScript",
+    "code": 187,
+    "comment": 37,
+    "blank": 37
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/fileDiscoveryService.test.ts": {
+    "language": "TypeScript",
+    "code": 257,
+    "comment": 11,
+    "blank": 64
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/confirmation-bus/index.ts": {
+    "language": "TypeScript",
+    "code": 2,
+    "comment": 5,
+    "blank": 2
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/test-data/resolved-aliases.golden.json": {
+    "language": "JSON",
+    "code": 222,
+    "comment": 0,
+    "blank": 1
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/confirmation-bus/types.ts": {
+    "language": "TypeScript",
+    "code": 72,
+    "comment": 9,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/chatCompressionService.test.ts": {
+    "language": "TypeScript",
+    "code": 271,
+    "comment": 8,
+    "blank": 35
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/modelConfig.golden.test.ts": {
+    "language": "TypeScript",
+    "code": 48,
+    "comment": 7,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/confirmation-bus/message-bus.test.ts": {
+    "language": "TypeScript",
+    "code": 184,
+    "comment": 10,
+    "blank": 48
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/confirmation-bus/message-bus.ts": {
+    "language": "TypeScript",
+    "code": 147,
+    "comment": 23,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/shellExecutionService.ts": {
+    "language": "TypeScript",
+    "code": 663,
+    "comment": 90,
+    "blank": 91
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/checker-runner.test.ts": {
+    "language": "TypeScript",
+    "code": 242,
+    "comment": 16,
+    "blank": 46
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/built-in.ts": {
+    "language": "TypeScript",
+    "code": 112,
+    "comment": 21,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/checker-runner.ts": {
+    "language": "TypeScript",
+    "code": 220,
+    "comment": 44,
+    "blank": 34
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/context-builder.ts": {
+    "language": "TypeScript",
+    "code": 33,
+    "comment": 15,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/registry.ts": {
+    "language": "TypeScript",
+    "code": 53,
+    "comment": 17,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/protocol.ts": {
+    "language": "TypeScript",
+    "code": 42,
+    "comment": 49,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/registry.test.ts": {
+    "language": "TypeScript",
+    "code": 35,
+    "comment": 5,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/built-in.test.ts": {
+    "language": "TypeScript",
+    "code": 211,
+    "comment": 9,
+    "blank": 25
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/modelRouterService.ts": {
+    "language": "TypeScript",
+    "code": 88,
+    "comment": 26,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/routingStrategy.ts": {
+    "language": "TypeScript",
+    "code": 32,
+    "comment": 38,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/services/chatRecordingService.ts": {
+    "language": "TypeScript",
+    "code": 340,
+    "comment": 107,
+    "blank": 41
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/modelRouterService.test.ts": {
+    "language": "TypeScript",
+    "code": 185,
+    "comment": 10,
+    "blank": 37
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/turn.ts": {
+    "language": "TypeScript",
+    "code": 334,
+    "comment": 27,
+    "blank": 57
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/fakeContentGenerator.ts": {
+    "language": "TypeScript",
+    "code": 97,
+    "comment": 9,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/apiKeyCredentialStorage.ts": {
+    "language": "TypeScript",
+    "code": 46,
+    "comment": 17,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/recordingContentGenerator.ts": {
+    "language": "TypeScript",
+    "code": 90,
+    "comment": 11,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/tokenLimits.ts": {
+    "language": "TypeScript",
+    "code": 22,
+    "comment": 7,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/recordingContentGenerator.test.ts": {
+    "language": "TypeScript",
+    "code": 128,
+    "comment": 5,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/logger.test.ts": {
+    "language": "TypeScript",
+    "code": 676,
+    "comment": 18,
+    "blank": 84
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/geminiChat.ts": {
+    "language": "TypeScript",
+    "code": 661,
+    "comment": 171,
+    "blank": 82
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/safety/context-builder.test.ts": {
+    "language": "TypeScript",
+    "code": 45,
+    "comment": 5,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/geminiChatHookTriggers.ts": {
+    "language": "TypeScript",
+    "code": 161,
+    "comment": 53,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/geminiRequest.ts": {
+    "language": "TypeScript",
+    "code": 6,
+    "comment": 10,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/baseLlmClient.ts": {
+    "language": "TypeScript",
+    "code": 203,
+    "comment": 44,
+    "blank": 25
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/baseLlmClient.test.ts": {
+    "language": "TypeScript",
+    "code": 462,
+    "comment": 33,
+    "blank": 102
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/client.test.ts": {
+    "language": "TypeScript",
+    "code": 1986,
+    "comment": 224,
+    "blank": 303
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/contentGenerator.ts": {
+    "language": "TypeScript",
+    "code": 154,
+    "comment": 9,
+    "blank": 25
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/loggingContentGenerator.test.ts": {
+    "language": "TypeScript",
+    "code": 211,
+    "comment": 7,
+    "blank": 40
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/fakeContentGenerator.test.ts": {
+    "language": "TypeScript",
+    "code": 147,
+    "comment": 5,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/prompts.test.ts": {
+    "language": "TypeScript",
+    "code": 358,
+    "comment": 6,
+    "blank": 33
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/clientHookTriggers.ts": {
+    "language": "TypeScript",
+    "code": 67,
+    "comment": 31,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/loggingContentGenerator.ts": {
+    "language": "TypeScript",
+    "code": 335,
+    "comment": 14,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/nonInteractiveToolExecutor.test.ts": {
+    "language": "TypeScript",
+    "code": 350,
+    "comment": 6,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/logger.ts": {
+    "language": "TypeScript",
+    "code": 372,
+    "comment": 52,
+    "blank": 45
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/prompts.ts": {
+    "language": "TypeScript",
+    "code": 364,
+    "comment": 31,
+    "blank": 56
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/geminiChat_network_retry.test.ts": {
+    "language": "TypeScript",
+    "code": 222,
+    "comment": 14,
+    "blank": 36
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/tokenLimits.test.ts": {
+    "language": "TypeScript",
+    "code": 19,
+    "comment": 6,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/sessionHookTriggers.ts": {
+    "language": "TypeScript",
+    "code": 69,
+    "comment": 23,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/coreToolHookTriggers.ts": {
+    "language": "TypeScript",
+    "code": 277,
+    "comment": 64,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/contentGenerator.test.ts": {
+    "language": "TypeScript",
+    "code": 362,
+    "comment": 8,
+    "blank": 38
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/client.ts": {
+    "language": "TypeScript",
+    "code": 638,
+    "comment": 35,
+    "blank": 85
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/turn.test.ts": {
+    "language": "TypeScript",
+    "code": 710,
+    "comment": 15,
+    "blank": 66
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/geminiChat.test.ts": {
+    "language": "TypeScript",
+    "code": 1942,
+    "comment": 191,
+    "blank": 230
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/sa-impersonation-provider.ts": {
+    "language": "TypeScript",
+    "code": 116,
+    "comment": 18,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/coreToolScheduler.test.ts": {
+    "language": "TypeScript",
+    "code": 1811,
+    "comment": 88,
+    "blank": 251
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/coreToolScheduler.ts": {
+    "language": "TypeScript",
+    "code": 1229,
+    "comment": 82,
+    "blank": 116
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/nonInteractiveToolExecutor.ts": {
+    "language": "TypeScript",
+    "code": 27,
+    "comment": 8,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/overrideStrategy.test.ts": {
+    "language": "TypeScript",
+    "code": 44,
+    "comment": 5,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/fallbackStrategy.test.ts": {
+    "language": "TypeScript",
+    "code": 72,
+    "comment": 5,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/overrideStrategy.ts": {
+    "language": "TypeScript",
+    "code": 30,
+    "comment": 10,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/fallbackStrategy.ts": {
+    "language": "TypeScript",
+    "code": 34,
+    "comment": 5,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/compositeStrategy.ts": {
+    "language": "TypeScript",
+    "code": 76,
+    "comment": 22,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/defaultStrategy.test.ts": {
+    "language": "TypeScript",
+    "code": 23,
+    "comment": 5,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/index.ts": {
+    "language": "TypeScript",
+    "code": 7,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/compositeStrategy.test.ts": {
+    "language": "TypeScript",
+    "code": 176,
+    "comment": 7,
+    "blank": 33
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/core/apiKeyCredentialStorage.test.ts": {
+    "language": "TypeScript",
+    "code": 71,
+    "comment": 5,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/classifierStrategy.ts": {
+    "language": "TypeScript",
+    "code": 180,
+    "comment": 11,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/hybrid-token-storage.test.ts": {
+    "language": "TypeScript",
+    "code": 221,
+    "comment": 6,
+    "blank": 48
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/classifierStrategy.test.ts": {
+    "language": "TypeScript",
+    "code": 237,
+    "comment": 9,
+    "blank": 37
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/routing/strategies/defaultStrategy.ts": {
+    "language": "TypeScript",
+    "code": 25,
+    "comment": 5,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/keychain-token-storage.ts": {
+    "language": "TypeScript",
+    "code": 276,
+    "comment": 10,
+    "blank": 46
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/base-token-storage.test.ts": {
+    "language": "TypeScript",
+    "code": 148,
+    "comment": 5,
+    "blank": 20
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/types.ts": {
+    "language": "TypeScript",
+    "code": 33,
+    "comment": 11,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/hybrid-token-storage.ts": {
+    "language": "TypeScript",
+    "code": 71,
+    "comment": 8,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/file-token-storage.ts": {
+    "language": "TypeScript",
+    "code": 146,
+    "comment": 5,
+    "blank": 35
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/base-token-storage.ts": {
+    "language": "TypeScript",
+    "code": 37,
+    "comment": 5,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/file-token-storage.test.ts": {
+    "language": "TypeScript",
+    "code": 263,
+    "comment": 5,
+    "blank": 55
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/oauth-token-storage.ts": {
+    "language": "TypeScript",
+    "code": 159,
+    "comment": 53,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/sa-impersonation-provider.test.ts": {
+    "language": "TypeScript",
+    "code": 111,
+    "comment": 12,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/google-auth-provider.test.ts": {
+    "language": "TypeScript",
+    "code": 172,
+    "comment": 10,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/token-storage/keychain-token-storage.test.ts": {
+    "language": "TypeScript",
+    "code": 376,
+    "comment": 10,
+    "blank": 54
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/oauth-token-storage.test.ts": {
+    "language": "TypeScript",
+    "code": 370,
+    "comment": 6,
+    "blank": 92
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/oauth-provider.ts": {
+    "language": "TypeScript",
+    "code": 752,
+    "comment": 155,
+    "blank": 119
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/google-auth-provider.ts": {
+    "language": "TypeScript",
+    "code": 114,
+    "comment": 21,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/oauth-provider.test.ts": {
+    "language": "TypeScript",
+    "code": 1498,
+    "comment": 40,
+    "blank": 195
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/oauth-utils.test.ts": {
+    "language": "TypeScript",
+    "code": 304,
+    "comment": 7,
+    "blank": 55
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/oauth-utils.ts": {
+    "language": "TypeScript",
+    "code": 246,
+    "comment": 103,
+    "blank": 41
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/activity-detector.test.ts": {
+    "language": "TypeScript",
+    "code": 131,
+    "comment": 9,
+    "blank": 25
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/activity-types.ts": {
+    "language": "TypeScript",
+    "code": 11,
+    "comment": 8,
+    "blank": 2
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mcp/auth-provider.ts": {
+    "language": "TypeScript",
+    "code": 4,
+    "comment": 12,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/semantic.test.ts": {
+    "language": "TypeScript",
+    "code": 394,
+    "comment": 9,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/trace.ts": {
+    "language": "TypeScript",
+    "code": 99,
+    "comment": 44,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/file-exporters.ts": {
+    "language": "TypeScript",
+    "code": 78,
+    "comment": 5,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/high-water-mark-tracker.test.ts": {
+    "language": "TypeScript",
+    "code": 134,
+    "comment": 21,
+    "blank": 44
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/semantic.ts": {
+    "language": "TypeScript",
+    "code": 268,
+    "comment": 22,
+    "blank": 34
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/config.test.ts": {
+    "language": "TypeScript",
+    "code": 161,
+    "comment": 5,
+    "blank": 18
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/integration.test.circular.ts": {
+    "language": "TypeScript",
+    "code": 39,
+    "comment": 15,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/memory-monitor.test.ts": {
+    "language": "TypeScript",
+    "code": 520,
+    "comment": 33,
+    "blank": 116
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/metrics.ts": {
+    "language": "TypeScript",
+    "code": 1049,
+    "comment": 48,
+    "blank": 118
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/telemetry-utils.test.ts": {
+    "language": "TypeScript",
+    "code": 40,
+    "comment": 5,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/startupProfiler.ts": {
+    "language": "TypeScript",
+    "code": 141,
+    "comment": 44,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/startupProfiler.test.ts": {
+    "language": "TypeScript",
+    "code": 255,
+    "comment": 22,
+    "blank": 71
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/sdk.ts": {
+    "language": "TypeScript",
+    "code": 313,
+    "comment": 29,
+    "blank": 29
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/config.ts": {
+    "language": "TypeScript",
+    "code": 96,
+    "comment": 14,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/telemetryAttributes.ts": {
+    "language": "TypeScript",
+    "code": 15,
+    "comment": 5,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/index.ts": {
+    "language": "TypeScript",
+    "code": 127,
+    "comment": 11,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/high-water-mark-tracker.ts": {
+    "language": "TypeScript",
+    "code": 52,
+    "comment": 36,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/write-todos.test.ts": {
+    "language": "TypeScript",
+    "code": 93,
+    "comment": 5,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/sdk.test.ts": {
+    "language": "TypeScript",
+    "code": 308,
+    "comment": 16,
+    "blank": 50
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/uiTelemetry.ts": {
+    "language": "TypeScript",
+    "code": 202,
+    "comment": 7,
+    "blank": 27
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/tool-registry.test.ts": {
+    "language": "TypeScript",
+    "code": 448,
+    "comment": 24,
+    "blank": 71
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/read-many-files.test.ts": {
+    "language": "TypeScript",
+    "code": 658,
+    "comment": 24,
+    "blank": 77
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/smart-edit.test.ts": {
+    "language": "TypeScript",
+    "code": 651,
+    "comment": 17,
+    "blank": 89
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/base-tool-invocation.test.ts": {
+    "language": "TypeScript",
+    "code": 105,
+    "comment": 12,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/read-file.test.ts": {
+    "language": "TypeScript",
+    "code": 469,
+    "comment": 12,
+    "blank": 53
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/tool-names.ts": {
+    "language": "TypeScript",
+    "code": 12,
+    "comment": 8,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/memoryTool.ts": {
+    "language": "TypeScript",
+    "code": 336,
+    "comment": 21,
+    "blank": 43
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/ripGrep.test.ts": {
+    "language": "TypeScript",
+    "code": 1528,
+    "comment": 52,
+    "blank": 187
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/modifiable-tool.ts": {
+    "language": "TypeScript",
+    "code": 170,
+    "comment": 15,
+    "blank": 29
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/smart-edit.ts": {
+    "language": "TypeScript",
+    "code": 809,
+    "comment": 96,
+    "blank": 105
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/write-todos.ts": {
+    "language": "TypeScript",
+    "code": 218,
+    "comment": 9,
+    "blank": 36
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/grep.test.ts": {
+    "language": "TypeScript",
+    "code": 348,
+    "comment": 24,
+    "blank": 46
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/loggers.ts": {
+    "language": "TypeScript",
+    "code": 633,
+    "comment": 6,
+    "blank": 52
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/memoryTool.test.ts": {
+    "language": "TypeScript",
+    "code": 346,
+    "comment": 24,
+    "blank": 62
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/read-many-files.ts": {
+    "language": "TypeScript",
+    "code": 440,
+    "comment": 51,
+    "blank": 49
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/write-file.test.ts": {
+    "language": "TypeScript",
+    "code": 760,
+    "comment": 29,
+    "blank": 108
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/tools.test.ts": {
+    "language": "TypeScript",
+    "code": 198,
+    "comment": 5,
+    "blank": 28
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/tools.ts": {
+    "language": "TypeScript",
+    "code": 484,
+    "comment": 157,
+    "blank": 80
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/clearcut-logger/clearcut-logger.ts": {
+    "language": "TypeScript",
+    "code": 1281,
+    "comment": 78,
+    "blank": 146
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/clearcut-logger/clearcut-logger.test.ts": {
+    "language": "TypeScript",
+    "code": 927,
+    "comment": 25,
+    "blank": 134
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/mcp-client-manager.test.ts": {
+    "language": "TypeScript",
+    "code": 207,
+    "comment": 5,
+    "blank": 27
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/ripGrep.ts": {
+    "language": "TypeScript",
+    "code": 451,
+    "comment": 70,
+    "blank": 69
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/shell.ts": {
+    "language": "TypeScript",
+    "code": 444,
+    "comment": 22,
+    "blank": 50
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/edit.ts": {
+    "language": "TypeScript",
+    "code": 508,
+    "comment": 66,
+    "blank": 52
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/grep.ts": {
+    "language": "TypeScript",
+    "code": 537,
+    "comment": 88,
+    "blank": 65
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/ls.ts": {
+    "language": "TypeScript",
+    "code": 250,
+    "comment": 66,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/edit.test.ts": {
+    "language": "TypeScript",
+    "code": 1028,
+    "comment": 45,
+    "blank": 114
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/web-search.test.ts": {
+    "language": "TypeScript",
+    "code": 219,
+    "comment": 8,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/constants.ts": {
+    "language": "TypeScript",
+    "code": 1,
+    "comment": 5,
+    "blank": 2
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/loggers.test.circular.ts": {
+    "language": "TypeScript",
+    "code": 98,
+    "comment": 13,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/clearcut-logger/event-metadata-key.ts": {
+    "language": "TypeScript",
+    "code": 134,
+    "comment": 213,
+    "blank": 158
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/loggers.test.ts": {
+    "language": "TypeScript",
+    "code": 1892,
+    "comment": 15,
+    "blank": 200
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/glob.ts": {
+    "language": "TypeScript",
+    "code": 288,
+    "comment": 41,
+    "blank": 35
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/types.ts": {
+    "language": "TypeScript",
+    "code": 1655,
+    "comment": 11,
+    "blank": 194
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/mcp-client.ts": {
+    "language": "TypeScript",
+    "code": 1223,
+    "comment": 300,
+    "blank": 151
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/rate-limiter.test.ts": {
+    "language": "TypeScript",
+    "code": 194,
+    "comment": 17,
+    "blank": 83
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/message-bus-integration.test.ts": {
+    "language": "TypeScript",
+    "code": 228,
+    "comment": 21,
+    "blank": 53
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/metrics.test.ts": {
+    "language": "TypeScript",
+    "code": 1252,
+    "comment": 27,
+    "blank": 178
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/read-file.ts": {
+    "language": "TypeScript",
+    "code": 198,
+    "comment": 20,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/activity-monitor.test.ts": {
+    "language": "TypeScript",
+    "code": 259,
+    "comment": 11,
+    "blank": 63
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/rate-limiter.ts": {
+    "language": "TypeScript",
+    "code": 76,
+    "comment": 32,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/telemetry-utils.ts": {
+    "language": "TypeScript",
+    "code": 10,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/diffOptions.ts": {
+    "language": "TypeScript",
+    "code": 61,
+    "comment": 5,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/tool-error.ts": {
+    "language": "TypeScript",
+    "code": 43,
+    "comment": 41,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/tool-call-decision.ts": {
+    "language": "TypeScript",
+    "code": 24,
+    "comment": 5,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/activity-monitor.ts": {
+    "language": "TypeScript",
+    "code": 179,
+    "comment": 78,
+    "blank": 37
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/sanitize.ts": {
+    "language": "TypeScript",
+    "code": 19,
+    "comment": 28,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/activity-detector.ts": {
+    "language": "TypeScript",
+    "code": 30,
+    "comment": 30,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/telemetry.test.ts": {
+    "language": "TypeScript",
+    "code": 59,
+    "comment": 6,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/diffOptions.test.ts": {
+    "language": "TypeScript",
+    "code": 149,
+    "comment": 5,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/gcp-exporters.ts": {
+    "language": "TypeScript",
+    "code": 107,
+    "comment": 17,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/tool-registry.ts": {
+    "language": "TypeScript",
+    "code": 410,
+    "comment": 71,
+    "blank": 54
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/sanitize.test.ts": {
+    "language": "TypeScript",
+    "code": 411,
+    "comment": 27,
+    "blank": 56
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/uiTelemetry.test.ts": {
+    "language": "TypeScript",
+    "code": 617,
+    "comment": 14,
+    "blank": 71
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/mcp-client.test.ts": {
+    "language": "TypeScript",
+    "code": 1433,
+    "comment": 46,
+    "blank": 191
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/memory-monitor.ts": {
+    "language": "TypeScript",
+    "code": 299,
+    "comment": 97,
+    "blank": 54
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/telemetry/gcp-exporters.test.ts": {
+    "language": "TypeScript",
+    "code": 323,
+    "comment": 5,
+    "blank": 78
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/write-file.ts": {
+    "language": "TypeScript",
+    "code": 428,
+    "comment": 42,
+    "blank": 52
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/modifiable-tool.test.ts": {
+    "language": "TypeScript",
+    "code": 345,
+    "comment": 10,
+    "blank": 64
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/ls.test.ts": {
+    "language": "TypeScript",
+    "code": 247,
+    "comment": 12,
+    "blank": 58
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/web-fetch.ts": {
+    "language": "TypeScript",
+    "code": 378,
+    "comment": 32,
+    "blank": 54
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/web-fetch.test.ts": {
+    "language": "TypeScript",
+    "code": 500,
+    "comment": 11,
+    "blank": 78
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/mcp-tool.ts": {
+    "language": "TypeScript",
+    "code": 354,
+    "comment": 32,
+    "blank": 44
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/web-search.ts": {
+    "language": "TypeScript",
+    "code": 192,
+    "comment": 26,
+    "blank": 28
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/index.ts": {
+    "language": "TypeScript",
+    "code": 119,
+    "comment": 21,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/glob.test.ts": {
+    "language": "TypeScript",
+    "code": 474,
+    "comment": 18,
+    "blank": 45
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/commands/extensions.test.ts": {
+    "language": "TypeScript",
+    "code": 14,
+    "comment": 5,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/mcp-tool.test.ts": {
+    "language": "TypeScript",
+    "code": 747,
+    "comment": 20,
+    "blank": 93
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/commands/types.ts": {
+    "language": "TypeScript",
+    "code": 25,
+    "comment": 20,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/commands/extensions.ts": {
+    "language": "TypeScript",
+    "code": 4,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/commands/restore.ts": {
+    "language": "TypeScript",
+    "code": 58,
+    "comment": 5,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/test-utils/config.ts": {
+    "language": "TypeScript",
+    "code": 21,
+    "comment": 13,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/shell.test.ts": {
+    "language": "TypeScript",
+    "code": 483,
+    "comment": 20,
+    "blank": 74
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/test-utils/mock-tool.ts": {
+    "language": "TypeScript",
+    "code": 185,
+    "comment": 13,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/test-utils/mock-message-bus.ts": {
+    "language": "TypeScript",
+    "code": 115,
+    "comment": 44,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/test-utils/index.ts": {
+    "language": "TypeScript",
+    "code": 1,
+    "comment": 5,
+    "blank": 2
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/ignorePatterns.test.ts": {
+    "language": "TypeScript",
+    "code": 234,
+    "comment": 18,
+    "blank": 57
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/getFolderStructure.ts": {
+    "language": "TypeScript",
+    "code": 250,
+    "comment": 61,
+    "blank": 38
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/fetch.ts": {
+    "language": "TypeScript",
+    "code": 51,
+    "comment": 5,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/workspaceContext.ts": {
+    "language": "TypeScript",
+    "code": 127,
+    "comment": 53,
+    "blank": 20
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/test-utils/mockWorkspaceContext.ts": {
+    "language": "TypeScript",
+    "code": 18,
+    "comment": 11,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/tools/mcp-client-manager.ts": {
+    "language": "TypeScript",
+    "code": 269,
+    "comment": 61,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/generateContentResponseUtilities.test.ts": {
+    "language": "TypeScript",
+    "code": 267,
+    "comment": 5,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/package.ts": {
+    "language": "TypeScript",
+    "code": 18,
+    "comment": 19,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/commands/restore.test.ts": {
+    "language": "TypeScript",
+    "code": 137,
+    "comment": 5,
+    "blank": 27
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/getPty.ts": {
+    "language": "TypeScript",
+    "code": 25,
+    "comment": 6,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/gitIgnoreParser.ts": {
+    "language": "TypeScript",
+    "code": 156,
+    "comment": 26,
+    "blank": 35
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/installationManager.ts": {
+    "language": "TypeScript",
+    "code": 42,
+    "comment": 10,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/tool-utils.ts": {
+    "language": "TypeScript",
+    "code": 50,
+    "comment": 19,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/bfsFileSearch.ts": {
+    "language": "TypeScript",
+    "code": 99,
+    "comment": 20,
+    "blank": 16
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/thoughtUtils.ts": {
+    "language": "TypeScript",
+    "code": 27,
+    "comment": 20,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/schemaValidator.ts": {
+    "language": "TypeScript",
+    "code": 26,
+    "comment": 22,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/thoughtUtils.test.ts": {
+    "language": "TypeScript",
+    "code": 73,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/systemEncoding.ts": {
+    "language": "TypeScript",
+    "code": 101,
+    "comment": 49,
+    "blank": 18
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/pathReader.test.ts": {
+    "language": "TypeScript",
+    "code": 405,
+    "comment": 24,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/partUtils.test.ts": {
+    "language": "TypeScript",
+    "code": 249,
+    "comment": 11,
+    "blank": 42
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/summarizer.test.ts": {
+    "language": "TypeScript",
+    "code": 206,
+    "comment": 6,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/customHeaderUtils.ts": {
+    "language": "TypeScript",
+    "code": 25,
+    "comment": 10,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/formatters.ts": {
+    "language": "TypeScript",
+    "code": 11,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/terminal.ts": {
+    "language": "TypeScript",
+    "code": 31,
+    "comment": 9,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/pathCorrector.test.ts": {
+    "language": "TypeScript",
+    "code": 81,
+    "comment": 5,
+    "blank": 16
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/shell-utils.test.ts": {
+    "language": "TypeScript",
+    "code": 652,
+    "comment": 5,
+    "blank": 92
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/memoryDiscovery.test.ts": {
+    "language": "TypeScript",
+    "code": 819,
+    "comment": 34,
+    "blank": 124
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/paths.test.ts": {
+    "language": "TypeScript",
+    "code": 391,
+    "comment": 11,
+    "blank": 73
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/paths.ts": {
+    "language": "TypeScript",
+    "code": 218,
+    "comment": 58,
+    "blank": 49
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/userAccountManager.ts": {
+    "language": "TypeScript",
+    "code": 112,
+    "comment": 12,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/testUtils.ts": {
+    "language": "TypeScript",
+    "code": 46,
+    "comment": 29,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/secure-browser-launcher.ts": {
+    "language": "TypeScript",
+    "code": 114,
+    "comment": 55,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/errorParsing.test.ts": {
+    "language": "TypeScript",
+    "code": 98,
+    "comment": 5,
+    "blank": 15
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/tool-utils.test.ts": {
+    "language": "TypeScript",
+    "code": 88,
+    "comment": 5,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/googleErrors.test.ts": {
+    "language": "TypeScript",
+    "code": 321,
+    "comment": 6,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/shell-utils.ts": {
+    "language": "TypeScript",
+    "code": 631,
+    "comment": 124,
+    "blank": 97
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/fileUtils.ts": {
+    "language": "TypeScript",
+    "code": 393,
+    "comment": 82,
+    "blank": 43
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/session.ts": {
+    "language": "TypeScript",
+    "code": 2,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/textUtils.ts": {
+    "language": "TypeScript",
+    "code": 29,
+    "comment": 19,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/channel.ts": {
+    "language": "TypeScript",
+    "code": 36,
+    "comment": 9,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/events.ts": {
+    "language": "TypeScript",
+    "code": 117,
+    "comment": 66,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/ignorePatterns.ts": {
+    "language": "TypeScript",
+    "code": 154,
+    "comment": 93,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/terminalSerializer.ts": {
+    "language": "TypeScript",
+    "code": 443,
+    "comment": 6,
+    "blank": 28
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/safeJsonStringify.ts": {
+    "language": "TypeScript",
+    "code": 43,
+    "comment": 20,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/installationManager.test.ts": {
+    "language": "TypeScript",
+    "code": 83,
+    "comment": 5,
+    "blank": 18
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/googleQuotaErrors.ts": {
+    "language": "TypeScript",
+    "code": 173,
+    "comment": 37,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/errorReporting.ts": {
+    "language": "TypeScript",
+    "code": 91,
+    "comment": 19,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/systemEncoding.test.ts": {
+    "language": "TypeScript",
+    "code": 370,
+    "comment": 25,
+    "blank": 103
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/userAccountManager.test.ts": {
+    "language": "TypeScript",
+    "code": 288,
+    "comment": 6,
+    "blank": 49
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/schemaValidator.test.ts": {
+    "language": "TypeScript",
+    "code": 107,
+    "comment": 9,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/pathCorrector.ts": {
+    "language": "TypeScript",
+    "code": 40,
+    "comment": 15,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/bfsFileSearch.test.ts": {
+    "language": "TypeScript",
+    "code": 192,
+    "comment": 11,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/partUtils.ts": {
+    "language": "TypeScript",
+    "code": 122,
+    "comment": 31,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/stdio.test.ts": {
+    "language": "TypeScript",
+    "code": 48,
+    "comment": 6,
+    "blank": 15
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/customHeaderUtils.test.ts": {
+    "language": "TypeScript",
+    "code": 73,
+    "comment": 5,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/geminiIgnoreParser.ts": {
+    "language": "TypeScript",
+    "code": 58,
+    "comment": 7,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/crawlCache.test.ts": {
+    "language": "TypeScript",
+    "code": 86,
+    "comment": 16,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/debugLogger.ts": {
+    "language": "TypeScript",
+    "code": 40,
+    "comment": 19,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/availability/policyCatalog.test.ts": {
+    "language": "TypeScript",
+    "code": 77,
+    "comment": 5,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/availability/policyCatalog.ts": {
+    "language": "TypeScript",
+    "code": 91,
+    "comment": 16,
+    "blank": 15
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/availability/modelAvailabilityService.test.ts": {
+    "language": "TypeScript",
+    "code": 131,
+    "comment": 8,
+    "blank": 27
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/crawlCache.ts": {
+    "language": "TypeScript",
+    "code": 35,
+    "comment": 25,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/browser.ts": {
+    "language": "TypeScript",
+    "code": 25,
+    "comment": 26,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/availability/modelPolicy.ts": {
+    "language": "TypeScript",
+    "code": 14,
+    "comment": 30,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/availability/policyHelpers.ts": {
+    "language": "TypeScript",
+    "code": 46,
+    "comment": 18,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/availability/modelAvailabilityService.ts": {
+    "language": "TypeScript",
+    "code": 100,
+    "comment": 9,
+    "blank": 25
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/availability/policyHelpers.test.ts": {
+    "language": "TypeScript",
+    "code": 50,
+    "comment": 5,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/ignore.ts": {
+    "language": "TypeScript",
+    "code": 73,
+    "comment": 40,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/fileSearch.test.ts": {
+    "language": "TypeScript",
+    "code": 633,
+    "comment": 22,
+    "blank": 115
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/ignore.test.ts": {
+    "language": "TypeScript",
+    "code": 136,
+    "comment": 7,
+    "blank": 18
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/result-cache.ts": {
+    "language": "TypeScript",
+    "code": 31,
+    "comment": 27,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/fileSearch.ts": {
+    "language": "TypeScript",
+    "code": 197,
+    "comment": 19,
+    "blank": 33
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/result-cache.test.ts": {
+    "language": "TypeScript",
+    "code": 37,
+    "comment": 10,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/crawler.test.ts": {
+    "language": "TypeScript",
+    "code": 493,
+    "comment": 14,
+    "blank": 68
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/filesearch/crawler.ts": {
+    "language": "TypeScript",
+    "code": 61,
+    "comment": 11,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/gitUtils.ts": {
+    "language": "TypeScript",
+    "code": 40,
+    "comment": 18,
+    "blank": 16
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/language-detection.ts": {
+    "language": "TypeScript",
+    "code": 95,
+    "comment": 5,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/errorReporting.test.ts": {
+    "language": "TypeScript",
+    "code": 144,
+    "comment": 14,
+    "blank": 36
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/environmentContext.test.ts": {
+    "language": "TypeScript",
+    "code": 139,
+    "comment": 5,
+    "blank": 29
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/safeJsonStringify.test.ts": {
+    "language": "TypeScript",
+    "code": 51,
+    "comment": 9,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/delay.test.ts": {
+    "language": "TypeScript",
+    "code": 84,
+    "comment": 6,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/textUtils.test.ts": {
+    "language": "TypeScript",
+    "code": 61,
+    "comment": 5,
+    "blank": 14
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/pathReader.ts": {
+    "language": "TypeScript",
+    "code": 87,
+    "comment": 20,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/retry.ts": {
+    "language": "TypeScript",
+    "code": 243,
+    "comment": 34,
+    "blank": 35
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/llm-edit-fixer.ts": {
+    "language": "TypeScript",
+    "code": 153,
+    "comment": 22,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/googleErrors.ts": {
+    "language": "TypeScript",
+    "code": 233,
+    "comment": 34,
+    "blank": 39
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/messageInspectors.ts": {
+    "language": "TypeScript",
+    "code": 15,
+    "comment": 5,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/LruCache.ts": {
+    "language": "TypeScript",
+    "code": 30,
+    "comment": 6,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/nextSpeakerChecker.ts": {
+    "language": "TypeScript",
+    "code": 102,
+    "comment": 19,
+    "blank": 15
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/secure-browser-launcher.test.ts": {
+    "language": "TypeScript",
+    "code": 197,
+    "comment": 13,
+    "blank": 33
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/delay.ts": {
+    "language": "TypeScript",
+    "code": 25,
+    "comment": 17,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/editor.test.ts": {
+    "language": "TypeScript",
+    "code": 447,
+    "comment": 11,
+    "blank": 55
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/formatters.test.ts": {
+    "language": "TypeScript",
+    "code": 20,
+    "comment": 5,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/quotaErrorDetection.ts": {
+    "language": "TypeScript",
+    "code": 26,
+    "comment": 5,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/tokenCalculation.test.ts": {
+    "language": "TypeScript",
+    "code": 91,
+    "comment": 17,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/fileUtils.test.ts": {
+    "language": "TypeScript",
+    "code": 847,
+    "comment": 22,
+    "blank": 131
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/httpErrors.ts": {
+    "language": "TypeScript",
+    "code": 31,
+    "comment": 11,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/nextSpeakerChecker.test.ts": {
+    "language": "TypeScript",
+    "code": 244,
+    "comment": 9,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/summarizer.ts": {
+    "language": "TypeScript",
+    "code": 71,
+    "comment": 21,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/__fixtures__/dummy.wasm": {
+    "language": "WebAssembly Text Format",
+    "code": 1,
+    "comment": 0,
+    "blank": 1
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/promptIdContext.ts": {
+    "language": "TypeScript",
+    "code": 2,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/prompts/mcp-prompts.ts": {
+    "language": "TypeScript",
+    "code": 12,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/prompts/prompt-registry.ts": {
+    "language": "TypeScript",
+    "code": 43,
+    "comment": 24,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/prompts/mcp-prompts.test.ts": {
+    "language": "TypeScript",
+    "code": 35,
+    "comment": 5,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/prompts/prompt-registry.test.ts": {
+    "language": "TypeScript",
+    "code": 93,
+    "comment": 5,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/errors.ts": {
+    "language": "TypeScript",
+    "code": 126,
+    "comment": 21,
+    "blank": 16
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/stdio.ts": {
+    "language": "TypeScript",
+    "code": 80,
+    "comment": 22,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/extensionLoader.test.ts": {
+    "language": "TypeScript",
+    "code": 171,
+    "comment": 6,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/environmentContext.ts": {
+    "language": "TypeScript",
+    "code": 66,
+    "comment": 17,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/retry.test.ts": {
+    "language": "TypeScript",
+    "code": 438,
+    "comment": 37,
+    "blank": 95
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/geminiIgnoreParser.test.ts": {
+    "language": "TypeScript",
+    "code": 57,
+    "comment": 5,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/llm-edit-fixer.test.ts": {
+    "language": "TypeScript",
+    "code": 295,
+    "comment": 36,
+    "blank": 51
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/memoryImportProcessor.ts": {
+    "language": "TypeScript",
+    "code": 298,
+    "comment": 68,
+    "blank": 48
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/editor.ts": {
+    "language": "TypeScript",
+    "code": 191,
+    "comment": 27,
+    "blank": 24
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/editCorrector.ts": {
+    "language": "TypeScript",
+    "code": 590,
+    "comment": 85,
+    "blank": 90
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/events.test.ts": {
+    "language": "TypeScript",
+    "code": 193,
+    "comment": 24,
+    "blank": 61
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/googleQuotaErrors.test.ts": {
+    "language": "TypeScript",
+    "code": 318,
+    "comment": 5,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/errorParsing.ts": {
+    "language": "TypeScript",
+    "code": 68,
+    "comment": 9,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/workspaceContext.test.ts": {
+    "language": "TypeScript",
+    "code": 321,
+    "comment": 10,
+    "blank": 96
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/exitCodes.ts": {
+    "language": "TypeScript",
+    "code": 7,
+    "comment": 5,
+    "blank": 2
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/memoryDiscovery.ts": {
+    "language": "TypeScript",
+    "code": 521,
+    "comment": 55,
+    "blank": 72
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/tokenCalculation.ts": {
+    "language": "TypeScript",
+    "code": 48,
+    "comment": 24,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/debugLogger.test.ts": {
+    "language": "TypeScript",
+    "code": 63,
+    "comment": 5,
+    "blank": 15
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/extensionLoader.ts": {
+    "language": "TypeScript",
+    "code": 157,
+    "comment": 73,
+    "blank": 27
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/getFolderStructure.test.ts": {
+    "language": "TypeScript",
+    "code": 288,
+    "comment": 6,
+    "blank": 48
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/generateContentResponseUtilities.ts": {
+    "language": "TypeScript",
+    "code": 91,
+    "comment": 5,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/channel.test.ts": {
+    "language": "TypeScript",
+    "code": 183,
+    "comment": 5,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/terminalSerializer.test.ts": {
+    "language": "TypeScript",
+    "code": 187,
+    "comment": 9,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/gitIgnoreParser.test.ts": {
+    "language": "TypeScript",
+    "code": 82,
+    "comment": 211,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/errors.test.ts": {
+    "language": "TypeScript",
+    "code": 155,
+    "comment": 5,
+    "blank": 18
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/__mocks__/fs/promises.ts": {
+    "language": "TypeScript",
+    "code": 35,
+    "comment": 8,
+    "blank": 6
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/flashFallback.test.ts": {
+    "language": "TypeScript",
+    "code": 104,
+    "comment": 19,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/editCorrector.test.ts": {
+    "language": "TypeScript",
+    "code": 685,
+    "comment": 14,
+    "blank": 45
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookPlanner.test.ts": {
+    "language": "TypeScript",
+    "code": 263,
+    "comment": 15,
+    "blank": 47
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookSystem.test.ts": {
+    "language": "TypeScript",
+    "code": 334,
+    "comment": 37,
+    "blank": 69
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/utils/memoryImportProcessor.test.ts": {
+    "language": "TypeScript",
+    "code": 657,
+    "comment": 77,
+    "blank": 138
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/index.ts": {
+    "language": "TypeScript",
+    "code": 16,
+    "comment": 9,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookRunner.test.ts": {
+    "language": "TypeScript",
+    "code": 605,
+    "comment": 21,
+    "blank": 105
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookTranslator.ts": {
+    "language": "TypeScript",
+    "code": 260,
+    "comment": 69,
+    "blank": 31
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/invocation.test.ts": {
+    "language": "TypeScript",
+    "code": 251,
+    "comment": 17,
+    "blank": 41
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookSystem.ts": {
+    "language": "TypeScript",
+    "code": 67,
+    "comment": 27,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/registry.ts": {
+    "language": "TypeScript",
+    "code": 88,
+    "comment": 31,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/codebase-investigator.ts": {
+    "language": "TypeScript",
+    "code": 132,
+    "comment": 12,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookRunner.ts": {
+    "language": "TypeScript",
+    "code": 275,
+    "comment": 62,
+    "blank": 38
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/registry.test.ts": {
+    "language": "TypeScript",
+    "code": 170,
+    "comment": 15,
+    "blank": 37
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookEventHandler.test.ts": {
+    "language": "TypeScript",
+    "code": 461,
+    "comment": 6,
+    "blank": 58
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/types.ts": {
+    "language": "TypeScript",
+    "code": 73,
+    "comment": 82,
+    "blank": 15
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/utils.ts": {
+    "language": "TypeScript",
+    "code": 20,
+    "comment": 17,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/types.ts": {
+    "language": "TypeScript",
+    "code": 375,
+    "comment": 171,
+    "blank": 56
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookAggregator.test.ts": {
+    "language": "TypeScript",
+    "code": 435,
+    "comment": 6,
+    "blank": 35
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/subagent-tool-wrapper.ts": {
+    "language": "TypeScript",
+    "code": 45,
+    "comment": 29,
+    "blank": 5
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/codebase-investigator.test.ts": {
+    "language": "TypeScript",
+    "code": 40,
+    "comment": 5,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookEventHandler.ts": {
+    "language": "TypeScript",
+    "code": 602,
+    "comment": 134,
+    "blank": 65
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/schema-utils.ts": {
+    "language": "TypeScript",
+    "code": 54,
+    "comment": 24,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/invocation.ts": {
+    "language": "TypeScript",
+    "code": 86,
+    "comment": 35,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookRegistry.ts": {
+    "language": "TypeScript",
+    "code": 196,
+    "comment": 55,
+    "blank": 32
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookAggregator.ts": {
+    "language": "TypeScript",
+    "code": 228,
+    "comment": 69,
+    "blank": 47
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/types.test.ts": {
+    "language": "TypeScript",
+    "code": 340,
+    "comment": 5,
+    "blank": 41
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookTranslator.test.ts": {
+    "language": "TypeScript",
+    "code": 199,
+    "comment": 6,
+    "blank": 32
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/schema-utils.test.ts": {
+    "language": "TypeScript",
+    "code": 139,
+    "comment": 8,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookRegistry.test.ts": {
+    "language": "TypeScript",
+    "code": 408,
+    "comment": 23,
+    "blank": 75
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/utils.test.ts": {
+    "language": "TypeScript",
+    "code": 92,
+    "comment": 7,
+    "blank": 17
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/executor.ts": {
+    "language": "TypeScript",
+    "code": 827,
+    "comment": 145,
+    "blank": 108
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/hooks/hookPlanner.ts": {
+    "language": "TypeScript",
+    "code": 90,
+    "comment": 37,
+    "blank": 28
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/executor.test.ts": {
+    "language": "TypeScript",
+    "code": 1580,
+    "comment": 112,
+    "blank": 238
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/agents/subagent-tool-wrapper.test.ts": {
+    "language": "TypeScript",
+    "code": 122,
+    "comment": 13,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/ide-client.test.ts": {
+    "language": "TypeScript",
+    "code": 793,
+    "comment": 20,
+    "blank": 115
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/detect-ide.ts": {
+    "language": "TypeScript",
+    "code": 83,
+    "comment": 6,
+    "blank": 9
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/detect-ide.test.ts": {
+    "language": "TypeScript",
+    "code": 105,
+    "comment": 6,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/process-utils.ts": {
+    "language": "TypeScript",
+    "code": 150,
+    "comment": 50,
+    "blank": 27
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/constants.ts": {
+    "language": "TypeScript",
+    "code": 4,
+    "comment": 5,
+    "blank": 2
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/ide-client.ts": {
+    "language": "TypeScript",
+    "code": 697,
+    "comment": 77,
+    "blank": 76
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/ide-installer.test.ts": {
+    "language": "TypeScript",
+    "code": 223,
+    "comment": 5,
+    "blank": 26
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/ideContext.ts": {
+    "language": "TypeScript",
+    "code": 72,
+    "comment": 37,
+    "blank": 16
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/process-utils.test.ts": {
+    "language": "TypeScript",
+    "code": 147,
+    "comment": 14,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/ide-installer.ts": {
+    "language": "TypeScript",
+    "code": 182,
+    "comment": 12,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/package.json": {
+    "language": "JSON",
+    "code": 96,
+    "comment": 0,
+    "blank": 1
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/types.ts": {
+    "language": "TypeScript",
+    "code": 59,
+    "comment": 80,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/test-setup.ts": {
+    "language": "TypeScript",
+    "code": 5,
+    "comment": 7,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/ide/ideContext.test.ts": {
+    "language": "TypeScript",
+    "code": 400,
+    "comment": 7,
+    "blank": 47
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/output/stream-json-formatter.test.ts": {
+    "language": "TypeScript",
+    "code": 486,
+    "comment": 7,
+    "blank": 62
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/output/json-formatter.test.ts": {
+    "language": "TypeScript",
+    "code": 288,
+    "comment": 11,
+    "blank": 32
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/index.ts": {
+    "language": "TypeScript",
+    "code": 48,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/output/stream-json-formatter.ts": {
+    "language": "TypeScript",
+    "code": 30,
+    "comment": 26,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/output/types.ts": {
+    "language": "TypeScript",
+    "code": 84,
+    "comment": 6,
+    "blank": 15
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/mocks/msw.ts": {
+    "language": "TypeScript",
+    "code": 2,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/output/json-formatter.ts": {
+    "language": "TypeScript",
+    "code": 38,
+    "comment": 5,
+    "blank": 10
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/tsconfig.json": {
+    "language": "JSON with Comments",
+    "code": 11,
+    "comment": 0,
+    "blank": 1
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/vitest.config.ts": {
+    "language": "TypeScript",
+    "code": 32,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/converter.test.ts": {
+    "language": "TypeScript",
+    "code": 447,
+    "comment": 5,
+    "blank": 26
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/setup.test.ts": {
+    "language": "TypeScript",
+    "code": 200,
+    "comment": 6,
+    "blank": 19
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/server.ts": {
+    "language": "TypeScript",
+    "code": 249,
+    "comment": 8,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/oauth-credential-storage.ts": {
+    "language": "TypeScript",
+    "code": 95,
+    "comment": 25,
+    "blank": 20
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/server.test.ts": {
+    "language": "TypeScript",
+    "code": 356,
+    "comment": 10,
+    "blank": 52
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/oauth-credential-storage.test.ts": {
+    "language": "TypeScript",
+    "code": 260,
+    "comment": 6,
+    "blank": 49
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/oauth2.ts": {
+    "language": "TypeScript",
+    "code": 542,
+    "comment": 58,
+    "blank": 64
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/oauth2.test.ts": {
+    "language": "TypeScript",
+    "code": 1060,
+    "comment": 41,
+    "blank": 174
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/codeAssist.ts": {
+    "language": "TypeScript",
+    "code": 42,
+    "comment": 6,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/types.ts": {
+    "language": "TypeScript",
+    "code": 137,
+    "comment": 61,
+    "blank": 22
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/converter.ts": {
+    "language": "TypeScript",
+    "code": 242,
+    "comment": 18,
+    "blank": 28
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/codeAssist.test.ts": {
+    "language": "TypeScript",
+    "code": 135,
+    "comment": 6,
+    "blank": 23
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/experiments/client_metadata.test.ts": {
+    "language": "TypeScript",
+    "code": 87,
+    "comment": 11,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/setup.ts": {
+    "language": "TypeScript",
+    "code": 103,
+    "comment": 12,
+    "blank": 13
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/experiments/client_metadata.ts": {
+    "language": "TypeScript",
+    "code": 39,
+    "comment": 11,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/experiments/types.ts": {
+    "language": "TypeScript",
+    "code": 30,
+    "comment": 5,
+    "blank": 8
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/experiments/flagNames.ts": {
+    "language": "TypeScript",
+    "code": 9,
+    "comment": 5,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/experiments/experiments.test.ts": {
+    "language": "TypeScript",
+    "code": 83,
+    "comment": 12,
+    "blank": 21
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/models.ts": {
+    "language": "TypeScript",
+    "code": 49,
+    "comment": 39,
+    "blank": 12
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/storage.test.ts": {
+    "language": "TypeScript",
+    "code": 46,
+    "comment": 5,
+    "blank": 11
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/code_assist/experiments/experiments.ts": {
+    "language": "TypeScript",
+    "code": 33,
+    "comment": 10,
+    "blank": 7
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/config.ts": {
+    "language": "TypeScript",
+    "code": 1305,
+    "comment": 131,
+    "blank": 208
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/config.test.ts": {
+    "language": "TypeScript",
+    "code": 1380,
+    "comment": 40,
+    "blank": 215
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/storage.ts": {
+    "language": "TypeScript",
+    "code": 107,
+    "comment": 5,
+    "blank": 30
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/constants.ts": {
+    "language": "TypeScript",
+    "code": 12,
+    "comment": 7,
+    "blank": 4
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/flashFallback.test.ts": {
+    "language": "TypeScript",
+    "code": 71,
+    "comment": 17,
+    "blank": 16
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/defaultModelConfigs.ts": {
+    "language": "TypeScript",
+    "code": 195,
+    "comment": 15,
+    "blank": 3
+  },
+  "file:///Users/neilluo/workspaces/AI/ai-agent/gemini-cli/packages/core/src/config/models.test.ts": {
+    "language": "TypeScript",
+    "code": 195,
+    "comment": 5,
+    "blank": 27
+  }
+}
