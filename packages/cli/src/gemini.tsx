@@ -101,7 +101,9 @@ import { isAlternateBufferEnabled } from './ui/hooks/useAlternateBuffer.js';
 import { profiler } from './ui/components/DebugProfiler.js';
 
 const SLOW_RENDER_MS = 200;
+// Ink 渲染超过该阈值会被记录为慢帧
 
+// 校验 dnsResolutionOrder 设置，非法值仅告警并使用默认值
 export function validateDnsResolutionOrder(
   order: string | undefined,
 ): DnsResolutionOrder {
@@ -119,6 +121,7 @@ export function validateDnsResolutionOrder(
   return defaultValue;
 }
 
+// 按机器内存动态计算 Node 进程的 --max-old-space-size 参数
 export function getNodeMemoryArgs(isDebugMode: boolean): string[] {
   const totalMemoryMB = os.totalmem() / (1024 * 1024);
   const heapStats = v8.getHeapStatistics();
@@ -135,6 +138,7 @@ export function getNodeMemoryArgs(isDebugMode: boolean): string[] {
   }
 
   if (process.env['GEMINI_CLI_NO_RELAUNCH']) {
+    // 禁止自动重启时直接返回空参数
     return [];
   }
 
@@ -150,6 +154,7 @@ export function getNodeMemoryArgs(isDebugMode: boolean): string[] {
   return [];
 }
 
+// 捕获未处理的 Promise 拒绝，友好提示并唤起调试面板
 export function setupUnhandledRejectionHandler() {
   let unhandledRejectionOccurred = false;
   process.on('unhandledRejection', (reason, _promise) => {
@@ -172,6 +177,7 @@ ${reason.stack}`
   });
 }
 
+// 启动交互式 Ink UI，挂载上下文并注册清理逻辑
 export async function startInteractiveUI(
   config: Config,
   settings: LoadedSettings,
@@ -184,10 +190,12 @@ export async function startInteractiveUI(
   // as there is no benefit of alternate buffer mode when using a screen reader
   // and the Ink alternate buffer mode requires line wrapping harmful to
   // screen readers.
+  // 交替缓冲区让终端更干净，但屏幕阅读器场景会禁用
   const useAlternateBuffer = shouldEnterAlternateScreen(
     isAlternateBufferEnabled(settings),
     config.getScreenReader(),
   );
+  // 鼠标事件仅在交替缓冲启用时开启
   const mouseEventsEnabled = useAlternateBuffer;
   if (mouseEventsEnabled) {
     enableMouseEvents();
@@ -196,9 +204,11 @@ export async function startInteractiveUI(
     });
   }
 
+  // 读取版本并设置窗口标题，便于区分当前工作区
   const version = await getCliVersion();
   setWindowTitle(basename(workspaceRoot), settings);
 
+  // 将 console 输出汇入 coreEvents，便于 UI 订阅
   const consolePatcher = new ConsolePatcher({
     onNewMessage: (msg) => {
       coreEvents.emitConsoleLog(msg.type, msg.content);
@@ -208,6 +218,7 @@ export async function startInteractiveUI(
   consolePatcher.patch();
   registerCleanup(consolePatcher.cleanup);
 
+  // 创建 Ink 使用的 stdout/stderr，避免影响主进程输出
   const { stdout: inkStdout, stderr: inkStderr } = createWorkingStdio();
 
   // Create wrapper component to use hooks inside render
@@ -244,6 +255,7 @@ export async function startInteractiveUI(
     );
   };
 
+  // 渲染 Ink 应用，慢帧会上报，调试模式下套用 StrictMode
   const instance = render(
     process.env['DEBUG'] ? (
       <React.StrictMode>
@@ -272,6 +284,7 @@ export async function startInteractiveUI(
     },
   );
 
+  // 异步检查更新，失败时仅在调试模式下提示
   checkForUpdates(settings)
     .then((info) => {
       handleAutoUpdate(info, settings, config.getProjectRoot());
@@ -283,10 +296,13 @@ export async function startInteractiveUI(
       }
     });
 
+  // Ink 卸载清理
   registerCleanup(() => instance.unmount());
 }
 
+// CLI 入口：完成设置加载、沙箱/重启、交互与非交互流程
 export async function main() {
+  // 启动性能计时与 stdio 补丁
   const cliStartupHandle = startupProfiler.start('cli_startup');
   const cleanupStdio = patchStdio();
   registerSyncCleanup(() => {
@@ -295,7 +311,9 @@ export async function main() {
     cleanupStdio();
   });
 
+  // 全局未处理拒绝保护
   setupUnhandledRejectionHandler();
+  // 1) 加载与迁移设置
   const loadSettingsHandle = startupProfiler.start('load_settings');
   const settings = loadSettings();
   loadSettingsHandle?.end();
@@ -315,11 +333,13 @@ export async function main() {
   migrateHandle?.end();
   await cleanupCheckpoints();
 
+  // 2) 解析参数并做早期输入校验
   const parseArgsHandle = startupProfiler.start('parse_arguments');
   const argv = await parseArguments(settings.merged);
   parseArgsHandle?.end();
 
   // Check for invalid input combinations early to prevent crashes
+  // stdin 非 TTY 时禁止 prompt-interactive
   if (argv.promptInteractive && !process.stdin.isTTY) {
     writeToStderr(
       'Error: The --prompt-interactive flag cannot be used when input is piped from stdin.\n',
@@ -328,6 +348,7 @@ export async function main() {
     process.exit(ExitCodes.FATAL_INPUT_ERROR);
   }
 
+  // 控制台补丁，带调试日志
   const isDebugMode = cliConfig.isDebugMode(argv);
   const consolePatcher = new ConsolePatcher({
     stderr: true,
@@ -339,10 +360,12 @@ export async function main() {
   consolePatcher.patch();
   registerCleanup(consolePatcher.cleanup);
 
+  // DNS 解析顺序设置
   dns.setDefaultResultOrder(
     validateDnsResolutionOrder(settings.merged.advanced?.dnsResolutionOrder),
   );
 
+  // 默认 auth 回退逻辑，兼容老类型与 Cloud Shell/Compute 环境
   // Set a default auth type if one isn't set or is set to a legacy type
   if (
     !settings.merged.security?.auth?.selectedType ||
@@ -375,6 +398,7 @@ export async function main() {
 
   // hop into sandbox if we are outside and sandboxing is enabled
   if (!process.env['SANDBOX']) {
+    // 3) 根据配置决定是否重启到 sandbox，并注入 stdin
     const memoryArgs = settings.merged.advanced?.autoConfigureMemory
       ? getNodeMemoryArgs(isDebugMode)
       : [];
@@ -452,6 +476,7 @@ export async function main() {
     } else {
       // Relaunch app so we always have a child process that can be internally
       // restarted if needed.
+      // 未启用 sandbox 时也以子进程重启，便于后续热重启
       await relaunchAppInChildProcess(memoryArgs, []);
     }
   }
@@ -460,6 +485,7 @@ export async function main() {
   // to run Gemini CLI. It is now safe to perform expensive initialization that
   // may have side effects.
   {
+    // 4) 加载 CLI 配置与策略/消息总线
     const loadConfigHandle = startupProfiler.start('load_cli_config');
     const config = await loadCliConfig(settings.merged, sessionId, argv);
     loadConfigHandle?.end();
@@ -481,12 +507,14 @@ export async function main() {
     }
 
     // Cleanup sessions after config initialization
+    // 过期会话清理失败不会阻断启动，仅记录错误
     try {
       await cleanupExpiredSessions(config, settings.merged);
     } catch (e) {
       debugLogger.error('Failed to cleanup expired sessions:', e);
     }
 
+    // 列出已安装扩展并退出
     if (config.getListExtensions()) {
       debugLogger.log('Installed extensions:');
       for (const extension of config.getExtensions()) {
@@ -497,6 +525,7 @@ export async function main() {
     }
 
     // Handle --list-sessions flag
+    // 列出会话并退出
     if (config.getListSessions()) {
       await listSessions(config);
       await runExitCleanup();
@@ -504,6 +533,7 @@ export async function main() {
     }
 
     // Handle --delete-session flag
+    // 删除指定会话并退出
     const sessionToDelete = config.getDeleteSession();
     if (sessionToDelete) {
       await deleteSession(config, sessionToDelete);
@@ -511,6 +541,7 @@ export async function main() {
       process.exit(ExitCodes.SUCCESS);
     }
 
+    // 5) 若进入交互式，提前设置终端 raw/alternate buffer
     const wasRaw = process.stdin.isRaw;
     if (config.isInteractive() && !wasRaw && process.stdin.isTTY) {
       // Set this as early as possible to avoid spurious characters from
@@ -542,6 +573,7 @@ export async function main() {
     }
 
     setMaxSizedBoxDebugging(isDebugMode);
+    // 6) 初始化核心能力（LLM、插件、扩展等）
     const initAppHandle = startupProfiler.start('initialize_app');
     const initializationResult = await initializeApp(config, settings);
     initAppHandle?.end();
@@ -551,14 +583,17 @@ export async function main() {
         AuthType.LOGIN_WITH_GOOGLE &&
       config.isBrowserLaunchSuppressed()
     ) {
+      // 浏览器被抑制时提前完成 OAuth
       // Do oauth before app renders to make copying the link possible.
       await getOauthClient(settings.merged.security.auth.selectedType, config);
     }
 
+    // Zed 集成实验分支
     if (config.getExperimentalZedIntegration()) {
       return runZedIntegration(config, settings, argv);
     }
 
+    // 汇总启动警告，后续在 UI/输出中展示
     let input = config.getQuestion();
     const startupWarnings = [
       ...(await getStartupWarnings()),
@@ -566,6 +601,7 @@ export async function main() {
     ];
 
     // Handle --resume flag
+    // 处理会话恢复，复用历史会话 ID
     let resumedSessionData: ResumedSessionData | undefined = undefined;
     if (argv.resume) {
       const sessionSelector = new SessionSelector(config);
@@ -589,6 +625,7 @@ export async function main() {
     cliStartupHandle?.end();
     // Render UI, passing necessary config values. Check that there is no command line question.
     if (config.isInteractive()) {
+      // 交互模式直接启动 Ink UI
       await startInteractiveUI(
         config,
         settings,
@@ -600,6 +637,7 @@ export async function main() {
       return;
     }
 
+    // 非交互模式：准备输入、鉴权、输出监听并执行业务
     await config.initialize();
     startupProfiler.flush(config);
 
@@ -622,6 +660,7 @@ export async function main() {
     // If not a TTY, read from stdin
     // This is for cases where the user pipes input directly into the command
     if (!process.stdin.isTTY) {
+      // 合并管道输入到 prompt 中
       const stdinData = await readStdin();
       if (stdinData) {
         input = `${stdinData}\n\n${input}`;
@@ -635,6 +674,7 @@ export async function main() {
       process.exit(ExitCodes.FATAL_INPUT_ERROR);
     }
 
+    // 生成 prompt 唯一 ID 便于追踪
     const prompt_id = Math.random().toString(16).slice(2);
     logUserPrompt(
       config,
@@ -657,11 +697,13 @@ export async function main() {
       debugLogger.log('Session ID: %s', sessionId);
     }
 
+    // 检测是否仍在使用已弃用的 --prompt 形式
     const hasDeprecatedPromptArg = process.argv.some((arg) =>
       arg.startsWith('--prompt'),
     );
     initializeOutputListenersAndFlush();
 
+    // 进入非交互执行流程
     await runNonInteractive({
       config: nonInteractiveConfig,
       settings,
@@ -676,6 +718,7 @@ export async function main() {
   }
 }
 
+// 设置终端窗口标题，退出时恢复
 function setWindowTitle(title: string, settings: LoadedSettings) {
   if (!settings.merged.ui?.hideWindowTitle) {
     const windowTitle = computeWindowTitle(title);
@@ -687,6 +730,7 @@ function setWindowTitle(title: string, settings: LoadedSettings) {
   }
 }
 
+// 当 Output 事件无监听时，回退到直接写 stdout/stderr 并冲刷 backlog
 export function initializeOutputListenersAndFlush() {
   // If there are no listeners for output, make sure we flush so output is not
   // lost.

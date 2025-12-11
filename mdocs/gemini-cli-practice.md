@@ -2,6 +2,7 @@
    Plays Pokémon——一个 Twitch 直播，Claude 在玩 Pokémon
    Red。游戏需要跨越数千步保持连贯性：记住目标、追踪进度、学习哪些攻击对哪些敌人有效。Claude 不用 compaction。它有一个小型文件系统，可以写 markdown 笔记。每次 context 重置，它读取自己的笔记继续玩。这个思路正在被训练进模型——让 Agent 天生就会"做笔记"，而不需要显式提示。
 
+- 其实可以简单理解GEMINI.md就是一个上下文工程
 - 可以这样理解，README.md是给人阅读的。
 - GEMINI.md是同时给AI和人看的，制定一些规范，让AI按照该项目的规范来。是一个memory文件
 - 可观测，数据库访问，DAO设计等等，都可以作为规范。
